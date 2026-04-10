@@ -1,0 +1,4 @@
+.next
+.astro
+dist
+node_modules

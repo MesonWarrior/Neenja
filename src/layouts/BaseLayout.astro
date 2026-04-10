@@ -1,0 +1,27 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+  iconHref: string;
+}
+
+const { title, description, iconHref } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href={iconHref} />
+    <link rel="shortcut icon" href={iconHref} />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

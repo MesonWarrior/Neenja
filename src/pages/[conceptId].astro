@@ -1,0 +1,41 @@
+---
+import { DocsShell } from "../../components/docs-shell";
+import { readKnowledgeDocument } from "../../lib/knowledge-file";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+export async function getStaticPaths() {
+  const document = await readKnowledgeDocument();
+
+  return document.concepts.map((concept) => ({
+    params: {
+      conceptId: concept.id,
+    },
+  }));
+}
+
+const document = await readKnowledgeDocument();
+const { conceptId } = Astro.params;
+const concept = conceptId ? document.conceptsById[conceptId] : undefined;
+
+if (!concept) {
+  throw new Error(`Unknown concept ID: ${conceptId ?? "missing"}`);
+}
+
+const basePath = import.meta.env.BASE_URL;
+const brandIconSrc = `${basePath}brand/neenja.svg`;
+---
+
+<BaseLayout
+  title={`${document.meta.title} / ${concept.title}`}
+  description={concept.summary || document.meta.summary}
+  iconHref={brandIconSrc}
+>
+  <DocsShell
+    client:load
+    document={document}
+    selectedConceptId={concept.id}
+    homeHref={basePath}
+    basePath={basePath}
+    brandIconSrc={brandIconSrc}
+  />
+</BaseLayout>
