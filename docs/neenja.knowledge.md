@@ -33,13 +33,15 @@ Over time, it becomes harder for humans to understand exactly what changes the c
 1. Clone Neenja in your project.
 2. Customize and run bootstrap prompt [`prompts/neenja-documentation-bootstrap-prompt.md`].
 3. Set your agent's system prompt to this prompt: [`prompts/neenja-documentation-bootstrap-prompt.md`] or add this at the end if you're using the system prompt.
-4. To use the UI, go to the Neenja folder and execute:
+4. To see the UI, go to the Neenja folder and execute:
 ```bash
 npm install
 npm run dev
 ```
+Open `http://localhost:4321`
 5. To build the UI, go to the Neenja folder and execute:
 ```bash
+npm install
 npm run build
 ```
 Then you can copy `dist/` directory to serve it with a server.

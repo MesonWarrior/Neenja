@@ -215,7 +215,7 @@ export function DocsShell({
 
             <div className="brand-copy">
               <p className="eyebrow">
-                <span className="gray">Powered by</span> Neenja
+                <span className="gray">Powered by</span> <a href="https://github.com/MesonWarrior/Neenja">Neenja</a>
               </p>
               <a href={homeHref} className="brand-link">
                 {knowledgeDocument.meta.title}
