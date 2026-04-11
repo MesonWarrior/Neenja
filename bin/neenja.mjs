@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { access, copyFile, mkdir } from "node:fs/promises";
+import { access, copyFile, mkdir, readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const astroCliPath = path.join(packageRoot, "node_modules", "astro", "astro.js");
 const promptsTemplateDir = path.join(packageRoot, "prompts");
 const defaultKnowledgeFileName = "neenja.knowledge.md";
+const requireFromCli = createRequire(import.meta.url);
 
 function printHelp() {
   console.log(`neenja <command> [options]
@@ -179,7 +180,25 @@ function getSharedAstroEnv(projectRoot, knowledgePath, extraEnv = {}) {
   };
 }
 
-function runAstro(command, astroArgs, env) {
+async function resolveAstroCliPath() {
+  const astroPackageJsonPath = requireFromCli.resolve("astro/package.json", {
+    paths: [packageRoot],
+  });
+  const astroPackageJson = JSON.parse(await readFile(astroPackageJsonPath, "utf8"));
+  const astroBinEntry = typeof astroPackageJson.bin === "string"
+    ? astroPackageJson.bin
+    : astroPackageJson.bin?.astro;
+
+  if (!astroBinEntry) {
+    throw new Error("Could not determine Astro CLI entrypoint from astro/package.json.");
+  }
+
+  return path.resolve(path.dirname(astroPackageJsonPath), astroBinEntry);
+}
+
+async function runAstro(command, astroArgs, env) {
+  const astroCliPath = await resolveAstroCliPath();
+
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [astroCliPath, command, "--root", packageRoot, ...astroArgs], {
       stdio: "inherit",
