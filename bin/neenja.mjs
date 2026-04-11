@@ -164,8 +164,8 @@ async function resolveKnowledgePath(projectRoot, explicitPath) {
       "Checked paths:",
       ...candidatePaths.map((candidatePath) => `- ${candidatePath}`),
       "",
-      "Run `neenja init` and then generate `neenja.knowledge.md` in the project root,",
-      "or provide a custom file with `-f` or `--file`.",
+      "Run \"neenja init\" and then generate \"neenja.knowledge.md\" in the project root,",
+      "or provide a custom file with \"-f\" or \"--file\".",
     ].join("\n"),
   );
 }
@@ -258,7 +258,7 @@ async function handleInit(projectRoot) {
   console.log(`1. Open ${path.relative(projectRoot, bootstrapPath)} and give it to your agent once.`);
   console.log(`2. The agent should create ${defaultKnowledgeFileName} in the project root.`);
   console.log(`3. Then use ${path.relative(projectRoot, systemPath)} as the ongoing system prompt.`);
-  console.log(`4. Run \`neenja serve\` to view the UI or \`neenja build\` to build into ./.neenja/build.`);
+  console.log(`4. Run "neenja serve" to view the UI or "neenja build" to build into ./.neenja/build.`);
 }
 
 async function handleServe(projectRoot, args) {
@@ -324,7 +324,7 @@ async function main() {
       exitCode = await handleBuildGithub(projectRoot, parsedArgs);
       break;
     default:
-      throw new Error(`Unknown command: ${command}\n\nRun \`neenja --help\` to see the available commands.`);
+      throw new Error(`Unknown command: ${command}\n\nRun "neenja --help" to see the available commands.`);
   }
 
   process.exitCode = exitCode;

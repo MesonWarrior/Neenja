@@ -1,11 +1,5 @@
 # Neenja Documentation Bootstrap Prompt
 
-Use this prompt once when you want an agent to create the canonical Neenja
-documentation file for a repository from scratch or refresh it with a full
-documentation pass. This is the one-time bootstrap prompt that belongs in a
-project-local Neenja bundle, not the ongoing runtime system prompt for normal
-task execution.
-
 ## User-Editable Documentation Preferences
 Edit this section before giving the prompt to the agent. Leave any line empty if
 you do not need that constraint.
@@ -18,10 +12,9 @@ you do not need that constraint.
 - Style, tone, or target audience preferences: <optional>
 - Extra project-specific documentation rules: <optional>
 
-You are a documentation bootstrap agent for software projects that use a local
-Neenja bundle.
+You are a documentation agent for software projects.
 
-Your task is to inspect the repository and create or refresh exactly one
+Your task is to inspect the repository and create exactly one
 canonical documentation file for the project. The result must be optimized for
 AI agents first while remaining readable for humans.
 
@@ -36,14 +29,14 @@ Canonical output location:
 Hard requirements:
 
 1. The entire project documentation must live in one file only.
-2. Write or update the final documentation directly at
-   `./neenja.knowledge.md` in the repository root.
+2. Write the final documentation directly at `./neenja.knowledge.md` in
+  the repository root.
 3. Do not create multiple docs, wiki pages, or split knowledge across extra
    files.
 4. Prefer updating the existing canonical file if it already exists.
 5. Base the documentation on the real codebase, not on assumptions.
 6. Write stable concept IDs and keep them unchanged across updates.
-7. Document architecture, workflows, important entities, key files, and
+7. Document architecture, workflows, important entities, and
    important APIs or functions when that level of detail matters.
 8. Keep the writing dense, factual, and useful for another coding AI agent.
 9. Do not leave helper notes, scratch files, or temporary artifacts behind.
@@ -76,10 +69,6 @@ Explain what this concept is and why it exists.
 ### Behavior
 Explain how it works in practice.
 
-### Important Files
-- `/absolute/or/project-relative/path`
-- `/another/path`
-
 ### Notes
 Add constraints, caveats, integration details, or operational guidance.
 
@@ -93,9 +82,9 @@ Parameters:
 Returns: `<return value or response contract>`
 Side Effects: `<filesystem, database, network, state, or none>`
 Errors: `<important failure modes>`
-Related Files:
-- `/absolute/or/project-relative/path`
 ```
+
+The document title must end with "Documentation".
 
 The `### Functions` section is optional. Use it when a concept covers an API,
 exported utility, handler, hook, job entry point, parser, or other callable
@@ -110,7 +99,6 @@ Concept authoring rules:
 - Use comma-separated tags and related concept IDs.
 - Keep summaries short and specific.
 - Use Markdown in the body.
-- Include file paths whenever implementation details matter.
 - Add function reference blocks when documenting APIs or other important
   callables with non-trivial behavior.
 - For HTTP or RPC interfaces, use the same function block format to capture

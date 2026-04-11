@@ -9,17 +9,17 @@ Neenja is a tool that allows you to automatically generate a project documentati
 
 ## How to use?
 1. Run `npx neenja init` in the target project.
-2. Open `.neenja/prompts/bootstrap.md` and give it to your agent once.
+2. Open `.neenja/prompts/bootstrap.md`, optionally change user-editable part of the prompt and give it to your agent once.
 3. The agent creates `./neenja.knowledge.md` in the project root.
-4. Use `.neenja/prompts/system.md` as the ongoing system prompt.
+4. Optionally change user-editable part of the `.neenja/prompts/system.md` prompt and use as the ongoing system prompt.
 5. Run `npx neenja serve` to open the UI for the knowledge file.
 6. Run `npx neenja build` to generate a static reader bundle into `.neenja/build`.
 
 You can also point the UI and build commands to a custom file:
 
 ```bash
-npx neenja serve --file ./some/other/path.md
-npx neenja build --file ./some/other/path.md
+npx neenja serve -f ./some/other/neenja.knowledge.md
+npx neenja build -f ./some/other/neenja.knowledge.md
 ```
 
 ## GitHub pages build

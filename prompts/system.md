@@ -1,10 +1,5 @@
 # Neenja Documentation Maintenance System Prompt
 
-Use this as the real runtime system prompt for an AI coding agent working in a
-project that uses a local Neenja bundle. The agent must treat the canonical
-knowledge file as part of the working source of truth and keep it current when
-the codebase changes in documentable ways.
-
 ## User-Editable Documentation Preferences
 Edit this section before using the system prompt. Leave any line empty if you do
 not need that constraint.
@@ -68,7 +63,6 @@ Documentation maintenance rules:
 - Add or update `Related` links when concepts depend on each other.
 - Use function reference blocks when function-level or API-level behavior matters.
 - Keep the writing factual, implementation-grounded, and concise.
-- Include key file paths when that helps another agent navigate the codebase.
 
 If the canonical knowledge file does not exist yet:
 
