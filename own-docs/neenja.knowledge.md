@@ -97,26 +97,13 @@ repeatable function reference section:
 
 ```txt
 ### Functions
-#### Function: `readKnowledgeDocument`
-Kind: async function
-Signature: `readKnowledgeDocument(): Promise<KnowledgeDocument>`
-Purpose: Parse the canonical knowledge file into the reader data model.
+#### Function: `parseKnowledgeDocument`
+Kind: function
+Signature: `parseKnowledgeDocument(document: string): ParsedData`
+Description: Parse the canonical knowledge file into the reader data model.
 Parameters:
-- none
-Returns: Parsed metadata, concepts, category groups, and lookup maps.
-Side Effects: Reads the canonical Markdown file from disk.
-Errors: Propagates file read failures.
-Related Files:
-- `lib/knowledge-file.ts`
+- document: string - Text document in Markdown format.
 ```
-
-### Why this format works for AI
-- It is plain text and easy to diff.
-- Stable keys let an agent parse structure without guessing.
-- Markdown content remains comfortable for humans to read and edit.
-- Concepts can reference each other with `Related` IDs.
-- Function reference blocks let agents capture API and callable behavior without
-  breaking the one-file model.
 
 ### Authoring rules
 1. Every concept must have a stable `ID`.
@@ -129,41 +116,21 @@ Related Files:
 7. Document important exported or operationally significant callables, not every
    trivial private helper.
 
-### Functions example
-#### Function: `resolveKnowledgeDocumentPath`
-Kind: async function
-Signature: `resolveKnowledgeDocumentPath(): Promise<string>`
-Purpose: Resolve the absolute path of the canonical knowledge file used by the reader and CLI.
+### Functions examples
+Below is an example of what functions look like in concepts.
+
+### Functions
+#### Function: `parseKnowledgeDocument`
+Kind: function
+Signature: `parseKnowledgeDocument(document: string): ParsedData`
+Description: Parse the canonical knowledge file into the reader data model.
 Parameters:
-- none
-Returns: Absolute path to the knowledge document, derived from `NEENJA_KNOWLEDGE_PATH`, `NEENJA_PROJECT_ROOT`, or the current working directory.
-Side Effects: Reads process environment variables to determine path overrides.
-Errors: Propagates path resolution failures if the runtime environment is misconfigured.
-Related Files:
-- `lib/knowledge-file.ts`
-- `bin/neenja.mjs`
+- document: string - Text document in Markdown format.
 
 #### Function: `readKnowledgeDocumentRaw`
-Kind: async function
-Signature: `readKnowledgeDocumentRaw(): Promise<string>`
-Purpose: Load the canonical Markdown knowledge file as raw text before parsing.
-Returns: UTF-8 string contents of the knowledge document.
-Side Effects: Reads the knowledge file from disk.
-Errors: Throws a human-readable error when the file does not exist and propagates other filesystem failures.
-Related Files:
-- `lib/knowledge-file.ts`
-
-#### Function: `readKnowledgeDocument`
-Kind: async function
-Signature: `readKnowledgeDocument(): Promise<KnowledgeDocument>`
-Purpose: Parse the canonical knowledge file into metadata, concept groups, and function-aware reader structures.
-Returns: Parsed metadata, concepts, category groups, concept lookup map, and per-concept function references.
-Side Effects: Reads the canonical Markdown file from disk through `readKnowledgeDocumentRaw()`.
-Errors: Propagates read and parse-related failures from the underlying file operations.
-Related Files:
-- `lib/knowledge-file.ts`
-- `src/pages/index.astro`
-- `src/pages/[conceptId].astro`
+Kind: function
+Signature: `readKnowledgeDocumentRaw(): string`
+Description: Load the canonical Markdown knowledge file as raw text and returns it.
 
 ## Concept: Prompt Workflow
 ID: prompt-workflow

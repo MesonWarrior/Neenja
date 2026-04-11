@@ -76,12 +76,9 @@ Add constraints, caveats, integration details, or operational guidance.
 #### Function: `<name>`
 Kind: `<function|method|handler|hook|endpoint>`
 Signature: `<call signature or route shape>`
-Description: `<description of the function>`
+Description: `<description of the function, what it does and what it returns>`
 Parameters:
-- `<name>`: `<meaning>`
-Returns: `<return value or response contract>`
-Side Effects: `<filesystem, database, network, state, or none>`
-Errors: `<important failure modes>`
+- `<name>`: `<type (optional)>` - <description>
 ```
 
 The document title must end with "Documentation".
