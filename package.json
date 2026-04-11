@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
     "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "build:github-pages": "PUBLIC_SITE_URL=https://your_name.github.io PUBLIC_BASE_PATH=/your_page/ ASTRO_TELEMETRY_DISABLED=1 astro build",
     "start": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "typecheck": "ASTRO_TELEMETRY_DISABLED=1 astro check"
