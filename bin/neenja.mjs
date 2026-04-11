@@ -26,13 +26,12 @@ Options:
   -h, --help         Show this help
 
 Notes:
-  - If no file is provided, Neenja looks for ./neenja.knowledge.md first.
-  - For backward compatibility it also falls back to ./docs/neenja.knowledge.md.
+  - If no file is provided, Neenja looks for ./neenja.knowledge.md.
 
 Examples:
   neenja init
   neenja serve
-  neenja serve --file ./docs/neenja.knowledge.md --port 4010
+  neenja serve --file ./some/other/path.md --port 4010
   neenja build
   neenja build-github --domain https://your_name.github.io --page /your_repo/
 `);
@@ -149,9 +148,7 @@ async function pathExists(targetPath) {
 async function resolveKnowledgePath(projectRoot, explicitPath) {
   const candidatePaths = explicitPath
     ? [path.resolve(projectRoot, explicitPath)]
-    : [
-        path.join(projectRoot, defaultKnowledgeFileName),
-      ];
+    : [path.join(projectRoot, defaultKnowledgeFileName)];
 
   for (const candidatePath of candidatePaths) {
     if (await pathExists(candidatePath)) {

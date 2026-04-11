@@ -2,10 +2,6 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 export const defaultKnowledgeDocumentFileName = "neenja.knowledge.md";
-export const legacyKnowledgeDocumentPath = path.join(
-  "docs",
-  defaultKnowledgeDocumentFileName,
-);
 
 type Concept = {
   id: string;
@@ -47,15 +43,7 @@ export async function resolveKnowledgeDocumentPath(): Promise<string> {
   const projectRoot = process.env.NEENJA_PROJECT_ROOT
     ? path.resolve(process.env.NEENJA_PROJECT_ROOT)
     : process.cwd();
-  const primaryPath = path.join(projectRoot, defaultKnowledgeDocumentFileName);
-  const fallbackPath = path.join(projectRoot, legacyKnowledgeDocumentPath);
-
-  try {
-    await fs.access(primaryPath);
-    return primaryPath;
-  } catch {
-    return fallbackPath;
-  }
+  return path.join(projectRoot, defaultKnowledgeDocumentFileName);
 }
 
 function parseFrontmatter(raw: string) {
