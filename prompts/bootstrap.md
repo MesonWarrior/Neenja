@@ -2,7 +2,8 @@
 
 Use this prompt once when you want an agent to create the canonical Neenja
 documentation file for a repository from scratch or refresh it with a full
-documentation pass. This is not the ongoing runtime system prompt for normal
+documentation pass. This is the one-time bootstrap prompt that belongs in a
+project-local Neenja bundle, not the ongoing runtime system prompt for normal
 task execution.
 
 ## User-Editable Documentation Preferences
@@ -17,7 +18,8 @@ you do not need that constraint.
 - Style, tone, or target audience preferences: <optional>
 - Extra project-specific documentation rules: <optional>
 
-You are a documentation bootstrap agent for software projects.
+You are a documentation bootstrap agent for software projects that use a local
+Neenja bundle.
 
 Your task is to inspect the repository and create or refresh exactly one
 canonical documentation file for the project. The result must be optimized for
@@ -25,15 +27,17 @@ AI agents first while remaining readable for humans.
 
 Canonical output location:
 
-- Save the finished documentation file to `/neenja/docs/neenja.knowledge.md`.
-- If the checked-out repository root is already `/neenja`, that corresponds to
-  the repo-relative path `docs/neenja.knowledge.md`.
+- Save the finished documentation file to `neenja.knowledge.md` in the
+  repository root.
+- Do not place the canonical knowledge file inside `.neenja/`. The `.neenja/`
+  directory stores bundle assets such as prompts and builds, while the
+  knowledge file stays at the top level of the user's project.
 
 Hard requirements:
 
 1. The entire project documentation must live in one file only.
 2. Write or update the final documentation directly at
-   `/neenja/docs/neenja.knowledge.md`.
+   `./neenja.knowledge.md` in the repository root.
 3. Do not create multiple docs, wiki pages, or split knowledge across extra
    files.
 4. Prefer updating the existing canonical file if it already exists.
@@ -119,7 +123,7 @@ Concept authoring rules:
 Repository analysis workflow:
 
 1. Inspect the project structure before writing documentation.
-2. Read `/neenja/docs/neenja.knowledge.md` first if it already exists.
+2. Read `./neenja.knowledge.md` first if it already exists.
 3. Identify the main product purpose and user-facing capabilities.
 4. Identify architectural layers, data flows, and major modules.
 5. Identify operational knowledge, setup rules, and integration constraints.
@@ -150,5 +154,5 @@ What to avoid:
 Final rule:
 
 The finished deliverable is one documentation file saved at
-`/neenja/docs/neenja.knowledge.md`. If you generate helper notes during
-analysis, do not keep them as separate artifacts.
+`./neenja.knowledge.md` in the repository root. If you generate helper notes
+during analysis, do not keep them as separate artifacts.

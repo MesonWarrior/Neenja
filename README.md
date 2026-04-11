@@ -1,34 +1,33 @@
 # Neenja Docs Tool
 
-Neenja is a tool that allows you to automatically generate a project documentation file using any AI coding agent, with automatic updates whenever changes are made.
+Neenja is a portable documentation bundle that allows you to automatically generate a project documentation file using any AI coding agent, with automatic updates whenever changes are made.
 
-<img src="./neenja_image.png" alt="Neenja" style="width: 100%">
+<img src="https://mesonwarrior.github.io/neenja-docs/neenja_image.png" alt="Neenja" style="width: 100%">
 
 ## Example
 [Neenja Documentation page](https://mesonwarrior.github.io/neenja-docs/)
 
 ## How to use?
-1. Clone Neenja in your project.
-2. Customize and run bootstrap prompt [`prompts/neenja-documentation-bootstrap-prompt.md`].
-3. Set your agent's system prompt to this prompt: [`prompts/neenja-documentation-bootstrap-prompt.md`] or add this at the end if you're using the system prompt.
-4. To see the UI, go to the Neenja folder and run:
+1. Run `neenja init` in the target project.
+2. Open `.neenja/prompts/bootstrap.md` and give it to your agent once.
+3. The agent creates `./neenja.knowledge.md` in the project root.
+4. Use `.neenja/prompts/system.md` as the ongoing system prompt.
+5. Run `neenja serve` to open the UI for the knowledge file.
+6. Run `neenja build` to generate a static reader bundle into `.neenja/build`.
+
+You can also point the UI and build commands to a custom file:
+
 ```bash
-npm install
-npm run dev
+neenja serve --file ./some/other/path.md
+neenja build --file ./some/other/path.md
 ```
-Open `http://localhost:4321`
-5. To build the UI, go to the Neenja folder and run:
-```bash
-npm run build
-```
-Then you can copy `dist/` directory to serve it with a server.
 
 ## GitHub pages build
-To build the project for github pages:
-1. Change `build:github-pages` script's parameters in `package.json` for your case.
-2. Run:
+To build a GitHub Pages-ready bundle into `.neenja/build`, provide the same env
+vars as before and run:
+
 ```bash
-npm run build:github-pages
+PUBLIC_SITE_URL=https://your_name.github.io PUBLIC_BASE_PATH=/your_repo/ neenja build-github
 ```
 
 ## Made with

@@ -1,10 +1,10 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-export const knowledgeDocumentPath = path.join(
-  process.cwd(),
+export const defaultKnowledgeDocumentFileName = "neenja.knowledge.md";
+export const legacyKnowledgeDocumentPath = path.join(
   "docs",
-  "neenja.knowledge.md",
+  defaultKnowledgeDocumentFileName,
 );
 
 type Concept = {
@@ -36,6 +36,27 @@ export type KnowledgeDocument = {
   categories: CategoryGroup[];
   conceptsById: Record<string, Concept>;
 };
+
+export async function resolveKnowledgeDocumentPath(): Promise<string> {
+  const configuredPath = process.env.NEENJA_KNOWLEDGE_PATH;
+
+  if (configuredPath) {
+    return path.resolve(configuredPath);
+  }
+
+  const projectRoot = process.env.NEENJA_PROJECT_ROOT
+    ? path.resolve(process.env.NEENJA_PROJECT_ROOT)
+    : process.cwd();
+  const primaryPath = path.join(projectRoot, defaultKnowledgeDocumentFileName);
+  const fallbackPath = path.join(projectRoot, legacyKnowledgeDocumentPath);
+
+  try {
+    await fs.access(primaryPath);
+    return primaryPath;
+  } catch {
+    return fallbackPath;
+  }
+}
 
 function parseFrontmatter(raw: string) {
   if (!raw.startsWith("---\n")) {
@@ -178,7 +199,21 @@ function groupByCategory(concepts: Concept[]) {
 }
 
 export async function readKnowledgeDocumentRaw() {
-  return fs.readFile(knowledgeDocumentPath, "utf8");
+  const knowledgeDocumentPath = await resolveKnowledgeDocumentPath();
+
+  try {
+    return await fs.readFile(knowledgeDocumentPath, "utf8");
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      throw new Error(`Knowledge file was not found at ${knowledgeDocumentPath}.`);
+    }
+
+    throw error;
+  }
 }
 
 export async function readKnowledgeDocument(): Promise<KnowledgeDocument> {

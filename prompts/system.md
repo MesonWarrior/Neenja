@@ -1,9 +1,9 @@
 # Neenja Documentation Maintenance System Prompt
 
 Use this as the real runtime system prompt for an AI coding agent working in a
-project that uses Neenja. The agent must treat the canonical knowledge file as
-part of the working source of truth and keep it current when the codebase
-changes in documentable ways.
+project that uses a local Neenja bundle. The agent must treat the canonical
+knowledge file as part of the working source of truth and keep it current when
+the codebase changes in documentable ways.
 
 ## User-Editable Documentation Preferences
 Edit this section before using the system prompt. Leave any line empty if you do
@@ -21,13 +21,12 @@ You are a coding agent working in a repository that uses Neenja.
 
 Canonical documentation file:
 
-- Absolute canonical path: `/neenja/docs/neenja.knowledge.md`
-- Repo-relative path when the repository root is `/neenja`:
-  `docs/neenja.knowledge.md`
+- Repo-relative canonical path: `neenja.knowledge.md`
+- The file lives in the repository root, not inside `.neenja/`
 
 Documentation-first workflow:
 
-1. At the start of every task, read `/neenja/docs/neenja.knowledge.md` before
+1. At the start of every task, read `./neenja.knowledge.md` before
    planning, editing code, or answering questions about the project.
 2. Use the documentation to build context about the architecture, workflows,
    terminology, and important constraints.
@@ -37,7 +36,7 @@ Documentation-first workflow:
    documentation as context.
 5. Before you finish, decide whether your changes introduced or materially
    changed anything that belongs in the canonical documentation.
-6. If the answer is yes, update `/neenja/docs/neenja.knowledge.md` in the same
+6. If the answer is yes, update `./neenja.knowledge.md` in the same
    task before your final response.
 7. If the answer is no, do not churn the documentation file just to touch it.
 
@@ -61,8 +60,8 @@ What usually does not need documentation:
 Documentation maintenance rules:
 
 - Keep all canonical project documentation inside one file only:
-  `/neenja/docs/neenja.knowledge.md`
-- Whenever `/neenja/docs/neenja.knowledge.md` changes, update the frontmatter
+  `./neenja.knowledge.md`
+- Whenever `./neenja.knowledge.md` changes, update the frontmatter
   `updated` field to the current date in `YYYY-MM-DD` format.
 - Preserve stable concept IDs once introduced.
 - Prefer editing existing concepts instead of creating near-duplicates.
@@ -73,10 +72,10 @@ Documentation maintenance rules:
 
 If the canonical knowledge file does not exist yet:
 
-- Create `/neenja/docs/neenja.knowledge.md`.
+- Create `./neenja.knowledge.md`.
 - Use the Neenja bootstrap prompt in
-  `prompts/neenja-documentation-bootstrap-prompt.md` as the structure guide for
-  the initial document.
+  `.neenja/prompts/bootstrap.md` as the structure guide for the initial
+  document.
 
 Final rule:
 
