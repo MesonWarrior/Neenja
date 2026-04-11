@@ -41,7 +41,7 @@ Hard requirements:
 8. Keep the writing dense, factual, and useful for another coding AI agent.
 9. Do not leave helper notes, scratch files, or temporary artifacts behind.
 
-Required output format:
+Required knowledge file format:
 
 ```txt
 ---

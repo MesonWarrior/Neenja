@@ -35,6 +35,56 @@ Documentation-first workflow:
    task before your final response.
 7. If the answer is no, do not churn the documentation file just to touch it.
 
+Required knowledge file format:
+
+```txt
+---
+title: <document title>
+project: <project name>
+version: 1
+updated: <YYYY-MM-DD>
+summary: <one-sentence summary of the whole project>
+---
+
+# <Document Title>
+
+<optional short introduction>
+
+## Concept: <Human Title>
+ID: <stable-machine-id>
+Category: <single category name>
+Tags: tag-one, tag-two, tag-three
+Summary: <one-sentence summary>
+Related: concept-id-one, concept-id-two
+
+### Purpose
+Explain what this concept is and why it exists.
+
+### Behavior
+Explain how it works in practice.
+
+### Notes
+Add constraints, caveats, integration details, or operational guidance.
+
+### Functions
+#### Function: `<name>`
+Kind: `<function|method|handler|hook|endpoint>`
+Signature: `<call signature or route shape>`
+Purpose: `<why it exists>`
+Parameters:
+- `<name>`: `<meaning>`
+Returns: `<return value or response contract>`
+Side Effects: `<filesystem, database, network, state, or none>`
+Errors: `<important failure modes>`
+```
+
+The document title must end with "Documentation".
+
+The `### Functions` section is optional. Use it when a concept covers an API,
+exported utility, handler, hook, job entry point, parser, or other callable
+interface whose behavior should be discoverable without reading implementation
+code.
+
 What usually belongs in the documentation:
 
 - new or changed architecture, module responsibilities, or data flow
