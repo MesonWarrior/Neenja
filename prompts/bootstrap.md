@@ -73,12 +73,12 @@ Explain how it works in practice.
 Add constraints, caveats, integration details, or operational guidance.
 
 ### Functions
-#### Function: `<name>`
-Kind: `<function|method|handler|hook|endpoint>`
-Signature: `<call signature or route shape>`
-Description: `<description of the function, what it does and what it returns>`
+#### Function: <name>
+Kind: <function|method|handler|hook|endpoint>
+Signature: <call signature or route shape>
+Description: <description of the function, what it does and what it returns>
 Parameters:
-- `<name>`: `<type (optional)>` - <description>
+- <name>: <type (optional)> - <description>
 ```
 
 The document title must end with "Documentation".

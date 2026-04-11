@@ -122,14 +122,14 @@ Below is an example of what functions look like in concepts.
 ### Functions
 #### Function: `parseKnowledgeDocument`
 Kind: function
-Signature: `parseKnowledgeDocument(document: string): ParsedData`
+Signature: parseKnowledgeDocument(document: string): ParsedData
 Description: Parse the canonical knowledge file into the reader data model.
 Parameters:
 - document: string - Text document in Markdown format.
 
 #### Function: `readKnowledgeDocumentRaw`
 Kind: function
-Signature: `readKnowledgeDocumentRaw(): string`
+Signature: readKnowledgeDocumentRaw(): string
 Description: Load the canonical Markdown knowledge file as raw text and returns it.
 
 ## Concept: Prompt Workflow
