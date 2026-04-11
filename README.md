@@ -1,6 +1,6 @@
 # Neenja Docs Tool
 
-Neenja is a portable documentation bundle that allows you to automatically generate a project documentation file using any AI coding agent, with automatic updates whenever changes are made.
+Neenja is a tool that allows you to automatically generate a project documentation file using any AI coding agent, with automatic updates whenever changes are made.
 
 <img src="https://mesonwarrior.github.io/neenja-docs/neenja_image.png" alt="Neenja" style="width: 100%">
 
