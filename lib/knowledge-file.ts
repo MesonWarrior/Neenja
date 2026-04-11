@@ -14,12 +14,8 @@ export type ConceptFunction = {
   name: string;
   kind: string;
   signature: string;
-  purpose: string;
+  description: string;
   parameters: string[];
-  returns: string;
-  sideEffects: string;
-  errors: string;
-  relatedFiles: string[];
   fields: FunctionField[];
 };
 
@@ -288,12 +284,8 @@ function parseFunctionBlock(block: string, usedIds: Set<string>): ConceptFunctio
     name,
     kind: getFunctionFieldText(fields, "Kind"),
     signature: getFunctionFieldText(fields, "Signature"),
-    purpose: getFunctionFieldText(fields, "Purpose"),
+    description: getFunctionFieldText(fields, "Description"),
     parameters: getFunctionFieldItems(fields, "Parameters"),
-    returns: getFunctionFieldText(fields, "Returns"),
-    sideEffects: getFunctionFieldText(fields, "Side Effects"),
-    errors: getFunctionFieldText(fields, "Errors"),
-    relatedFiles: getFunctionFieldItems(fields, "Related Files"),
     fields,
   };
 }

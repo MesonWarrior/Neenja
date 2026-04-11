@@ -84,12 +84,8 @@ function functionMatchesSearch(
     functionReference.name,
     functionReference.kind,
     functionReference.signature,
-    functionReference.purpose,
+    functionReference.description,
     functionReference.parameters.join(" "),
-    functionReference.returns,
-    functionReference.sideEffects,
-    functionReference.errors,
-    functionReference.relatedFiles.join(" "),
     functionReference.fields
       .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
       .join("\n"),
@@ -745,7 +741,7 @@ export function DocsShell({
                           </strong>
                           <span className="search-result-parent">{concept.title}</span>
                           <span className="search-result-summary">
-                            {functionReference.purpose || functionReference.signature || "Open this function reference."}
+                            {functionReference.description || functionReference.signature || "Open this function reference."}
                           </span>
                         </a>
                       ))}

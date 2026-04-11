@@ -2,7 +2,7 @@
 title: Neenja Documentation
 project: Neenja
 version: 1
-updated: 2026-04-11
+updated: 2026-04-12
 summary: Neenja is a tool that allows you to automatically generate a project documentation file using any AI coding agent, with automatic updates whenever changes are made.
 ---
 
@@ -186,12 +186,9 @@ each important callable with a repeatable `#### Function:` block and include:
 
 - callable kind such as function, method, handler, hook, or endpoint
 - signature or route shape
-- purpose
-- parameters or request inputs
-- return value or response contract
-- side effects
-- important error cases
-- related implementation files when useful
+- description
+- parameters or request inputs when the callable accepts them
+- additional fields only when they add real integration or operational value
 
 ### API-specific guidance
 When the callable is an HTTP or RPC interface, adapt the same block to capture:

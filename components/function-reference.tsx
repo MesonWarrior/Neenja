@@ -8,7 +8,7 @@ function normalizeFieldLabel(value: string) {
 function isPrimaryFunctionField(field: FunctionField) {
   const normalizedLabel = normalizeFieldLabel(field.label);
 
-  return normalizedLabel === "kind" || normalizedLabel === "signature" || normalizedLabel === "purpose";
+  return normalizedLabel === "kind" || normalizedLabel === "signature" || normalizedLabel === "description";
 }
 
 function FunctionFieldValue({ field }: { field: FunctionField }) {
@@ -69,9 +69,9 @@ export function FunctionReferenceCard({
           </p>
         ) : null}
 
-        {functionReference.purpose ? (
-          <p className="function-reference-purpose">
-            <InlineMarkdown content={functionReference.purpose} />
+        {functionReference.description ? (
+          <p className="function-reference-description">
+            <InlineMarkdown content={functionReference.description} />
           </p>
         ) : null}
       </header>
