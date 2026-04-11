@@ -51,16 +51,12 @@ export function FunctionReferenceCard({
   return (
     <article id={functionReference.id} className="function-reference-card">
       <header className="function-reference-header">
-        <p className="function-reference-eyebrow">Function Reference</p>
+        <p className="function-reference-eyebrow">{functionReference.kind}</p>
 
         <div className="function-reference-title-row">
           <h4 className="function-reference-title">
             <code>{functionReference.name}</code>
           </h4>
-
-          {functionReference.kind ? (
-            <span className="function-kind-pill">{functionReference.kind}</span>
-          ) : null}
         </div>
 
         {functionReference.signature ? (

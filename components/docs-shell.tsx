@@ -586,6 +586,7 @@ export function DocsShell({
                                       }
                                     >
                                       <span className="function-link-title">
+                                        <div className="function-link-title-point" />
                                         <code>{functionReference.name}</code>
                                       </span>
                                     </a>
