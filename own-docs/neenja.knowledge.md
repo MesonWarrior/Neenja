@@ -129,6 +129,42 @@ Related Files:
 7. Document important exported or operationally significant callables, not every
    trivial private helper.
 
+### Functions example
+#### Function: `resolveKnowledgeDocumentPath`
+Kind: async function
+Signature: `resolveKnowledgeDocumentPath(): Promise<string>`
+Purpose: Resolve the absolute path of the canonical knowledge file used by the reader and CLI.
+Parameters:
+- none
+Returns: Absolute path to the knowledge document, derived from `NEENJA_KNOWLEDGE_PATH`, `NEENJA_PROJECT_ROOT`, or the current working directory.
+Side Effects: Reads process environment variables to determine path overrides.
+Errors: Propagates path resolution failures if the runtime environment is misconfigured.
+Related Files:
+- `lib/knowledge-file.ts`
+- `bin/neenja.mjs`
+
+#### Function: `readKnowledgeDocumentRaw`
+Kind: async function
+Signature: `readKnowledgeDocumentRaw(): Promise<string>`
+Purpose: Load the canonical Markdown knowledge file as raw text before parsing.
+Returns: UTF-8 string contents of the knowledge document.
+Side Effects: Reads the knowledge file from disk.
+Errors: Throws a human-readable error when the file does not exist and propagates other filesystem failures.
+Related Files:
+- `lib/knowledge-file.ts`
+
+#### Function: `readKnowledgeDocument`
+Kind: async function
+Signature: `readKnowledgeDocument(): Promise<KnowledgeDocument>`
+Purpose: Parse the canonical knowledge file into metadata, concept groups, and function-aware reader structures.
+Returns: Parsed metadata, concepts, category groups, concept lookup map, and per-concept function references.
+Side Effects: Reads the canonical Markdown file from disk through `readKnowledgeDocumentRaw()`.
+Errors: Propagates read and parse-related failures from the underlying file operations.
+Related Files:
+- `lib/knowledge-file.ts`
+- `src/pages/index.astro`
+- `src/pages/[conceptId].astro`
+
 ## Concept: Prompt Workflow
 ID: prompt-workflow
 Category: For humans

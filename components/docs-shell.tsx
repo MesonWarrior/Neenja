@@ -1,7 +1,21 @@
 import { ChevronDown, Menu, Search, X } from "lucide-react";
+import type { MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import { FunctionReferenceSection } from "./function-reference";
 import { MarkdownContent } from "./markdown-content";
 import type { KnowledgeDocument } from "../lib/knowledge-file";
+
+const pendingFunctionScrollStorageKey = "neenja-pending-function-scroll";
+const scrollNavigationKeys = new Set([
+  "ArrowDown",
+  "ArrowUp",
+  "PageDown",
+  "PageUp",
+  "Home",
+  "End",
+  " ",
+  "Spacebar",
+]);
 
 function trimTrailingSlash(value: string) {
   if (value === "/") {
@@ -25,6 +39,10 @@ function getConceptHref(basePath: string, conceptId: string) {
   return joinPath(basePath, `/${conceptId}/`);
 }
 
+function getFunctionHref(basePath: string, conceptId: string, functionId: string) {
+  return `${getConceptHref(basePath, conceptId)}#${functionId}`;
+}
+
 function normalize(value: string) {
   return value.trim().toLowerCase();
 }
@@ -40,13 +58,52 @@ function conceptMatchesSearch(concept: KnowledgeDocument["concepts"][number], qu
     concept.summary,
     concept.tags.join(" "),
     concept.related.join(" "),
-    concept.content,
+    concept.contentBlocks
+      .filter((block) => block.type === "markdown")
+      .map((block) => block.content)
+      .join("\n"),
   ]
     .join("\n")
     .toLowerCase();
 
   return haystack.includes(query);
 }
+
+function functionMatchesSearch(
+  concept: KnowledgeDocument["concepts"][number],
+  functionReference: KnowledgeDocument["concepts"][number]["functions"][number],
+  query: string,
+) {
+  if (!query) {
+    return false;
+  }
+
+  const haystack = [
+    concept.title,
+    concept.category,
+    functionReference.name,
+    functionReference.kind,
+    functionReference.signature,
+    functionReference.purpose,
+    functionReference.parameters.join(" "),
+    functionReference.returns,
+    functionReference.sideEffects,
+    functionReference.errors,
+    functionReference.relatedFiles.join(" "),
+    functionReference.fields
+      .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
+      .join("\n"),
+  ]
+    .join("\n")
+    .toLowerCase();
+
+  return haystack.includes(query);
+}
+
+type FunctionSearchResult = {
+  concept: KnowledgeDocument["concepts"][number];
+  functionReference: KnowledgeDocument["concepts"][number]["functions"][number];
+};
 
 function ExpandableText({
   text,
@@ -120,11 +177,25 @@ export function DocsShell({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [activeFunctionId, setActiveFunctionId] = useState("");
+  const [isFunctionItemLinkActiveDismissed, setIsFunctionItemLinkActiveDismissed] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const dismissFunctionItemLinkOnUserScrollRef = useRef(false);
+  const pointerScrollCandidateRef = useRef(false);
   const selectedConcept = knowledgeDocument.conceptsById[selectedConceptId ?? ""] ?? knowledgeDocument.concepts[0];
   const selectedCategorySlug = selectedConcept?.categorySlug;
   const query = normalize(search);
-  const searchResults = knowledgeDocument.concepts.filter((concept) => conceptMatchesSearch(concept, query));
+  const conceptSearchResults = knowledgeDocument.concepts.filter((concept) => conceptMatchesSearch(concept, query));
+  const functionSearchResults: FunctionSearchResult[] = query
+    ? knowledgeDocument.concepts.flatMap((concept) =>
+        concept.functions
+          .filter((functionReference) => functionMatchesSearch(concept, functionReference, query))
+          .map((functionReference) => ({
+            concept,
+            functionReference,
+          })),
+      )
+    : [];
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
       knowledgeDocument.categories.map((category) => [category.slug, category.slug === selectedCategorySlug]),
@@ -185,6 +256,153 @@ export function DocsShell({
     };
   }, [isSearchOpen, isSidebarOpen]);
 
+  useEffect(() => {
+    const syncHash = () => {
+      const nextFunctionId = window.location.hash.replace(/^#/, "");
+      setActiveFunctionId(nextFunctionId);
+
+      if (nextFunctionId) {
+        dismissFunctionItemLinkOnUserScrollRef.current = true;
+        pointerScrollCandidateRef.current = false;
+        setIsFunctionItemLinkActiveDismissed(false);
+      } else {
+        dismissFunctionItemLinkOnUserScrollRef.current = false;
+        pointerScrollCandidateRef.current = false;
+        setIsFunctionItemLinkActiveDismissed(false);
+      }
+    };
+
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+
+    return () => {
+      window.removeEventListener("hashchange", syncHash);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const dismissFunctionItemLinkActive = () => {
+      if (!dismissFunctionItemLinkOnUserScrollRef.current) {
+        return;
+      }
+
+      dismissFunctionItemLinkOnUserScrollRef.current = false;
+      pointerScrollCandidateRef.current = false;
+      setIsFunctionItemLinkActiveDismissed(true);
+    };
+
+    const handleWheel = () => {
+      dismissFunctionItemLinkActive();
+    };
+
+    const handleTouchMove = () => {
+      dismissFunctionItemLinkActive();
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!scrollNavigationKeys.has(event.key)) {
+        return;
+      }
+
+      dismissFunctionItemLinkActive();
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!dismissFunctionItemLinkOnUserScrollRef.current || event.pointerType !== "mouse") {
+        return;
+      }
+
+      pointerScrollCandidateRef.current = true;
+    };
+
+    const clearPointerScrollCandidate = () => {
+      pointerScrollCandidateRef.current = false;
+    };
+
+    const handleScroll = () => {
+      if (!pointerScrollCandidateRef.current) {
+        return;
+      }
+
+      dismissFunctionItemLinkActive();
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("pointerdown", handlePointerDown, { passive: true });
+    window.addEventListener("pointerup", clearPointerScrollCandidate, { passive: true });
+    window.addEventListener("pointercancel", clearPointerScrollCandidate, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", clearPointerScrollCandidate);
+      window.removeEventListener("pointercancel", clearPointerScrollCandidate);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const pendingRaw = window.sessionStorage.getItem(pendingFunctionScrollStorageKey);
+
+    if (!pendingRaw) {
+      return;
+    }
+
+    let pending: { pathname?: string; functionId?: string } | null = null;
+
+    try {
+      pending = JSON.parse(pendingRaw) as { pathname?: string; functionId?: string };
+    } catch {
+      window.sessionStorage.removeItem(pendingFunctionScrollStorageKey);
+      return;
+    }
+
+    if (!pending?.pathname || !pending.functionId || pending.pathname !== window.location.pathname) {
+      return;
+    }
+
+    window.sessionStorage.removeItem(pendingFunctionScrollStorageKey);
+
+    const frameId = window.requestAnimationFrame(() => {
+      const target = window.document.getElementById(pending.functionId ?? "");
+
+      if (!target) {
+        return;
+      }
+
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${window.location.search}#${pending.functionId}`,
+      );
+      setActiveFunctionId(pending.functionId ?? "");
+      setIsFunctionItemLinkActiveDismissed(false);
+      dismissFunctionItemLinkOnUserScrollRef.current = true;
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [selectedConcept?.id]);
+
   const openSearch = () => {
     setIsSidebarOpen(false);
     setIsSearchOpen(true);
@@ -192,6 +410,54 @@ export function DocsShell({
 
   const closeSearch = () => {
     setIsSearchOpen(false);
+  };
+
+  const handleFunctionNavigation = (
+    event: MouseEvent<HTMLAnchorElement>,
+    conceptId: string,
+    functionId: string,
+  ) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    event.preventDefault();
+
+    const conceptHref = getConceptHref(basePath, conceptId);
+    const functionHref = getFunctionHref(basePath, conceptId, functionId);
+
+    setIsSidebarOpen(false);
+    setIsSearchOpen(false);
+
+    if (window.location.pathname === conceptHref) {
+      const target = window.document.getElementById(functionId);
+
+      if (!target) {
+        window.location.assign(functionHref);
+        return;
+      }
+
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+
+      window.history.pushState(window.history.state, "", functionHref);
+      setActiveFunctionId(functionId);
+      setIsFunctionItemLinkActiveDismissed(false);
+      dismissFunctionItemLinkOnUserScrollRef.current = true;
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      pendingFunctionScrollStorageKey,
+      JSON.stringify({
+        pathname: conceptHref,
+        functionId,
+      }),
+    );
+
+    window.location.assign(conceptHref);
   };
 
   return (
@@ -239,7 +505,7 @@ export function DocsShell({
               type="button"
               className="icon-button mobile-search-trigger"
               onClick={openSearch}
-              aria-label="Search concepts"
+              aria-label="Search concepts and functions"
               aria-haspopup="dialog"
               aria-expanded={isSearchOpen}
             >
@@ -293,16 +559,46 @@ export function DocsShell({
                   {isOpen ? (
                     category.concepts.length > 0 ? (
                       <div className="concept-sublist" aria-label={`${category.name} concepts`}>
-                        {category.concepts.map((concept) => (
-                          <a
-                            key={concept.id}
-                            href={getConceptHref(basePath, concept.id)}
-                            className={selectedConcept?.id === concept.id ? "concept-item-link active" : "concept-item-link"}
-                            onClick={() => setIsSidebarOpen(false)}
-                          >
-                            <span className="concept-link-title">{concept.title}</span>
-                          </a>
-                        ))}
+                        {category.concepts.map((concept) => {
+                          const isConceptActive = selectedConcept?.id === concept.id;
+
+                          return (
+                            <div key={concept.id} className="concept-tree-item">
+                              <a
+                                href={getConceptHref(basePath, concept.id)}
+                                className={isConceptActive ? "concept-item-link active" : "concept-item-link"}
+                                onClick={() => setIsSidebarOpen(false)}
+                              >
+                                <span className="concept-link-title">{concept.title}</span>
+                              </a>
+
+                              {concept.functions.length > 0 ? (
+                                <div className="concept-function-sublist" aria-label={`${concept.title} functions`}>
+                                  {concept.functions.map((functionReference) => (
+                                    <a
+                                      key={functionReference.id}
+                                      href={getFunctionHref(basePath, concept.id, functionReference.id)}
+                                      className={
+                                        isConceptActive &&
+                                        activeFunctionId === functionReference.id &&
+                                        !isFunctionItemLinkActiveDismissed
+                                          ? "function-item-link active"
+                                          : "function-item-link"
+                                      }
+                                      onClick={(event) =>
+                                        handleFunctionNavigation(event, concept.id, functionReference.id)
+                                      }
+                                    >
+                                      <span className="function-link-title">
+                                        <code>{functionReference.name}</code>
+                                      </span>
+                                    </a>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="concept-preview-empty">No concepts in this category yet.</p>
@@ -357,7 +653,19 @@ export function DocsShell({
               </header>
 
               <div className="reader-body">
-                <MarkdownContent content={selectedConcept.content} />
+                {selectedConcept.contentBlocks.map((block, index) =>
+                  block.type === "markdown" ? (
+                    <MarkdownContent
+                      key={`${selectedConcept.id}-markdown-${index}`}
+                      content={block.content}
+                    />
+                  ) : (
+                    <FunctionReferenceSection
+                      key={`${selectedConcept.id}-functions-${index}`}
+                      block={block}
+                    />
+                  ),
+                )}
               </div>
             </article>
           ) : (
@@ -386,7 +694,7 @@ export function DocsShell({
             className="search-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="Search concepts"
+            aria-label="Search concepts and functions"
           >
             <div className="search-dialog-header">
               <div className="search-dialog-input-shell">
@@ -397,7 +705,7 @@ export function DocsShell({
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search"
+                  placeholder="Search concepts and functions"
                 />
               </div>
 
@@ -411,22 +719,62 @@ export function DocsShell({
               </button>
             </div>
 
-            <div className="search-dialog-results" aria-label="Matching concepts">
-              {searchResults.length > 0 ? (
-                searchResults.map((concept) => (
-                  <a
-                    key={concept.id}
-                    href={getConceptHref(basePath, concept.id)}
-                    className={selectedConcept?.id === concept.id ? "search-result-card active" : "search-result-card"}
-                    onClick={closeSearch}
-                  >
-                    <span className="search-result-eyebrow">{concept.category}</span>
-                    <strong className="search-result-title">{concept.title}</strong>
-                    <span className="search-result-summary">{concept.summary || "Open this concept to inspect the details."}</span>
-                  </a>
-                ))
+            <div className="search-dialog-results" aria-label="Matching concepts and functions">
+              {functionSearchResults.length > 0 || conceptSearchResults.length > 0 ? (
+                <>
+                  {functionSearchResults.length > 0 ? (
+                    <section className="search-results-group" aria-label="Matching functions">
+                      <p className="search-results-heading">Functions</p>
+
+                      {functionSearchResults.map(({ concept, functionReference }) => (
+                        <a
+                          key={`${concept.id}-${functionReference.id}`}
+                          href={getFunctionHref(basePath, concept.id, functionReference.id)}
+                          className={
+                            selectedConcept?.id === concept.id && activeFunctionId === functionReference.id
+                              ? "search-result-card active"
+                              : "search-result-card"
+                          }
+                          onClick={(event) =>
+                            handleFunctionNavigation(event, concept.id, functionReference.id)
+                          }
+                        >
+                          <span className="search-result-eyebrow">{concept.category}</span>
+                          <strong className="search-result-title">
+                            <code className="search-result-code">{functionReference.name}</code>
+                          </strong>
+                          <span className="search-result-parent">{concept.title}</span>
+                          <span className="search-result-summary">
+                            {functionReference.purpose || functionReference.signature || "Open this function reference."}
+                          </span>
+                        </a>
+                      ))}
+                    </section>
+                  ) : null}
+
+                  {conceptSearchResults.length > 0 ? (
+                    <section className="search-results-group" aria-label="Matching concepts">
+                      {query ? <p className="search-results-heading">Concepts</p> : null}
+
+                      {conceptSearchResults.map((concept) => (
+                        <a
+                          key={concept.id}
+                          href={getConceptHref(basePath, concept.id)}
+                          className={selectedConcept?.id === concept.id ? "search-result-card active" : "search-result-card"}
+                          onClick={closeSearch}
+                        >
+                          <span className="search-result-eyebrow">{concept.category}</span>
+                          <strong className="search-result-title">{concept.title}</strong>
+                          <span className="search-result-summary">
+                            {concept.summary || "Open this concept to inspect the details."}
+                          </span>
+                        </a>
+                      ))}
+                    </section>
+                  ) : null}
+                </>
               ) : (
-                <p className="empty-state">No concepts match this search yet.</p>
+                <p className="empty-state">No concepts or functions match this search yet.</p>
               )}
             </div>
           </section>

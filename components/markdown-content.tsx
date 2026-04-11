@@ -111,6 +111,10 @@ function renderInline(value: string) {
   });
 }
 
+export function InlineMarkdown({ content }: { content: string }) {
+  return <>{renderInline(content)}</>;
+}
+
 export function MarkdownContent({ content }: { content: string }) {
   const lines = content.replace(/\r\n/g, "\n").split("\n");
   const nodes: React.ReactNode[] = [];

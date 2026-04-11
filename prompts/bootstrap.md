@@ -76,7 +76,7 @@ Add constraints, caveats, integration details, or operational guidance.
 #### Function: `<name>`
 Kind: `<function|method|handler|hook|endpoint>`
 Signature: `<call signature or route shape>`
-Purpose: `<why it exists>`
+Description: `<description of the function>`
 Parameters:
 - `<name>`: `<meaning>`
 Returns: `<return value or response contract>`
@@ -89,7 +89,8 @@ The document title must end with "Documentation".
 The `### Functions` section is optional. Use it when a concept covers an API,
 exported utility, handler, hook, job entry point, parser, or other callable
 interface whose behavior should be discoverable without reading implementation
-code.
+code. 
+Note: If a function has no parameters, just don't create a "Parameters" field.
 
 Concept authoring rules:
 
