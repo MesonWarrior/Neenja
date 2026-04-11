@@ -1,145 +1,70 @@
 ---
-title: Neenja Bundle Documentation
+title: Neenja Documentation
 project: Neenja
 version: 1
 updated: 2026-04-11
-summary: Neenja is a portable bundle that keeps prompts in .neenja, keeps the canonical knowledge file in the project root, and serves or builds a reader UI for it.
+summary: Neenja is a tool that allows you to automatically generate a project documentation file using any AI coding agent, with automatic updates whenever changes are made.
 ---
 
-# Neenja Bundle Documentation
+# Neenja Documentation
 
-This file intentionally documents the bundle workflow that other projects use.
-It does not aim to describe every internal implementation detail of Neenja
-itself.
+This file is the single source of truth for the project. Every important concept
+must live here so an AI agent can understand the codebase by reading one file.
 
-## Concept: Bundle Overview
+## Concept: Platform Overview
 ID: platform-overview
 Category: For humans
-Tags: bundle, overview, workflow
-Summary: Neenja is used as a project-local bundle with prompts inside `.neenja/` and the canonical knowledge file in the project root.
-Related: bundle-cli-workflow, prompt-workflow, knowledge-file-format
+Tags: product, overview, goal
+Summary: Neenja is a documentation tool for vibecoding.
+Related: knowledge-file-format, prompt-workflow
 
 ### What it is
-Neenja is a portable documentation bundle for AI-assisted development. A user
-keeps one canonical `neenja.knowledge.md` file in the root of their project and
-stores Neenja-owned bundle assets inside `.neenja/`.
+The Neenja documentation tool allows you to automatically generate a project documentation file using any AI coding agent, with automatic updates whenever changes are made. It combines:
 
-### Bundle layout
-Common bundle paths are:
+- one canonical project knowledge file
+- a bootstrap prompt that creates or refreshes that file
+- a runtime system prompt that makes working agents read and maintain that file
+- a parser and reader UI for this file, so human can read it
 
-- `neenja.knowledge.md` for the canonical project knowledge file
-- `.neenja/prompts/bootstrap.md` for the one-time documentation generation prompt
-- `.neenja/prompts/system.md` for the ongoing maintenance prompt
-- `.neenja/build/` for static reader UI output
+### Why?
+Over time, it becomes harder for humans to understand exactly what changes the coding agent has made, and the coding agent itself makes more mistakes in the project because it doesn’t understand the context. Neenja provides a simple documentation tool that allows the agent to understand the project’s structure and enables humans to verify whether the agent has completed its task correctly and whether the logic is working as intended.
 
-### Why this layout
-The root-level knowledge file stays close to the user's codebase and is easy
-for agents to discover. The `.neenja/` directory keeps bundle-owned assets
-separate from user code while still living inside the same repository.
+### How to use?
+1. Clone Neenja in your project.
+2. Customize and run bootstrap prompt [`prompts/neenja-documentation-bootstrap-prompt.md`].
+3. Set your agent's system prompt to this prompt: [`prompts/neenja-documentation-bootstrap-prompt.md`] or add this at the end if you're using the system prompt.
+4. To see the UI, go to the Neenja folder and run:
+```bash
+npm install
+npm run dev
+```
+Open `http://localhost:4321`
+5. To build the UI, go to the Neenja folder and run:
+```bash
+npm run build
+```
+Then you can copy `dist/` directory to serve it with a server.
 
-## Concept: Bundle CLI Workflow
-ID: bundle-cli-workflow
-Category: For humans
-Tags: cli, commands, ui, build
-Summary: Neenja exposes CLI commands for initializing prompts, serving the UI, building a static bundle, and preparing a GitHub Pages build.
-Related: platform-overview, prompt-workflow, knowledge-file-format, function-documentation
+### GitHub pages build
+To build the project for github pages:
+1. Change `build:github-pages` script's parameters in `package.json` for your case.
+2. Run:
+```bash
+npm run build:github-pages
+```
 
-### Commands
-- `neenja init` creates `.neenja/prompts/bootstrap.md` and `.neenja/prompts/system.md`
-- `neenja serve` starts the local UI server for `./neenja.knowledge.md`
-- `neenja build` builds the static UI into `.neenja/build`
-- `neenja build-github` builds a GitHub Pages-ready bundle into `.neenja/build`
-- `neenja help` prints the available commands and usage
-
-### Knowledge file resolution
-By default, `serve` and `build` read `neenja.knowledge.md` from the current
-project root. They may also receive a custom file path through a positional
-argument or `--file <path>`.
-
-### Functions
-#### Function: `neenja init`
-Kind: CLI command
-Signature: `neenja init`
-Purpose: Scaffold the local Neenja bundle assets inside the current project.
-Parameters:
-- none
-Returns: Creates the prompt directory structure if needed and prints setup instructions.
-Side Effects: Creates `.neenja/`, `.neenja/prompts/bootstrap.md`, and `.neenja/prompts/system.md`.
-Errors: Propagates filesystem permission or write failures.
-Related Files:
-- `.neenja/prompts/bootstrap.md`
-- `.neenja/prompts/system.md`
-
-#### Function: `neenja serve`
-Kind: CLI command
-Signature: `neenja serve [path]` or `neenja serve --file <path>`
-Purpose: Start a local UI server for browsing the knowledge file.
-Parameters:
-- `path`: Optional custom path to a knowledge Markdown file.
-Returns: Runs the local reader UI server until the process is stopped.
-Side Effects: Reads the knowledge file and starts a local HTTP server.
-Errors: Fails when the target knowledge file is missing or unreadable.
-Related Files:
-- `neenja.knowledge.md`
-
-#### Function: `neenja build`
-Kind: CLI command
-Signature: `neenja build [path]` or `neenja build --file <path>`
-Purpose: Produce a static reader bundle for the selected knowledge file.
-Parameters:
-- `path`: Optional custom path to a knowledge Markdown file.
-Returns: Writes a static UI bundle into `.neenja/build`.
-Side Effects: Reads the knowledge file and writes generated build assets into `.neenja/build`.
-Errors: Fails when the target knowledge file is missing or unreadable, or when build output cannot be written.
-Related Files:
-- `neenja.knowledge.md`
-- `.neenja/build/`
-
-#### Function: `neenja build-github`
-Kind: CLI command
-Signature: `neenja build-github [path]` or `neenja build-github --file <path>`
-Purpose: Produce a GitHub Pages-ready static bundle using the same knowledge-file workflow as `build`.
-Parameters:
-- `path`: Optional custom path to a knowledge Markdown file.
-Returns: Writes a GitHub Pages-targeted UI bundle into `.neenja/build`.
-Side Effects: Reads the knowledge file, uses `PUBLIC_SITE_URL` and `PUBLIC_BASE_PATH` when present, and writes generated build assets into `.neenja/build`.
-Errors: Fails when the target knowledge file is missing or unreadable, or when build output cannot be written.
-Related Files:
-- `neenja.knowledge.md`
-- `.neenja/build/`
-
-## Concept: Prompt Workflow
-ID: prompt-workflow
-Category: For AI
-Tags: prompts, bootstrap, system, ai
-Summary: Neenja separates one-time documentation generation from ongoing maintenance through two project-local prompt files.
-Related: platform-overview, bundle-cli-workflow, knowledge-file-format, function-documentation
-
-### Prompt roles
-- `.neenja/prompts/bootstrap.md` is given to an agent once to create or fully refresh `neenja.knowledge.md`
-- `.neenja/prompts/system.md` is used during normal coding sessions so the agent reads and maintains `neenja.knowledge.md`
-
-### Workflow
-1. Run `neenja init`.
-2. Give `.neenja/prompts/bootstrap.md` to an agent.
-3. The agent creates `neenja.knowledge.md` in the project root.
-4. Reuse `.neenja/prompts/system.md` for normal work so the agent reads the
-   knowledge file first and updates it when behavior changes.
-
-### Important rule
-Prompt files live inside `.neenja/`, but the canonical knowledge file itself
-stays at the top level of the project. This keeps the agent-facing source of
-truth easy to locate without mixing it into bundle-owned assets.
+### What does it run on?
+This project is developed using React and uses Astro.
 
 ## Concept: Knowledge File Format
 ID: knowledge-file-format
 Category: For AI
-Tags: format, markdown, structure, knowledge
-Summary: The canonical knowledge base lives in root-level `neenja.knowledge.md` and uses frontmatter plus repeatable concept blocks.
-Related: platform-overview, bundle-cli-workflow, prompt-workflow, function-documentation
+Tags: format, markdown, structure, ai
+Summary: The knowledge base is stored in one Markdown file with frontmatter metadata, repeatable concept blocks, and optional function reference sections.
+Related: platform-overview, function-documentation
 
 ### Required structure
-The file starts with frontmatter:
+The file starts with YAML-like frontmatter:
 
 ```txt
 ---
@@ -151,8 +76,8 @@ summary: <one sentence summary>
 ---
 ```
 
-After that, the document may include intro text and then repeatable concept
-blocks:
+After that, the file contains any introductory text and then one or more
+repeatable concept blocks:
 
 ```txt
 ## Concept: <Human Title>
@@ -166,47 +91,122 @@ Related: concept-id-one, concept-id-two
 Concept explanation in Markdown.
 ```
 
-### Placement and defaults
-- The canonical file path is `./neenja.knowledge.md`
-- `neenja serve` and `neenja build` use that path by default
-- A custom file path may be supplied when the user wants to inspect or build a
-  different knowledge document
+When a concept describes an API surface, service module, parser, exported
+utility, hook, or other callable interface, the concept body may also include a
+repeatable function reference section:
 
-### Why this format works
-- It stays diff-friendly and easy for agents to parse
-- Stable IDs let prompts update concepts without guessing
-- Humans can browse the same file in raw Markdown or through the Neenja UI
-- One-file documentation keeps the AI-facing source of truth explicit
+```txt
+### Functions
+#### Function: `readKnowledgeDocument`
+Kind: async function
+Signature: `readKnowledgeDocument(): Promise<KnowledgeDocument>`
+Purpose: Parse the canonical knowledge file into the reader data model.
+Parameters:
+- none
+Returns: Parsed metadata, concepts, category groups, and lookup maps.
+Side Effects: Reads the canonical Markdown file from disk.
+Errors: Propagates file read failures.
+Related Files:
+- `lib/knowledge-file.ts`
+```
+
+### Why this format works for AI
+- It is plain text and easy to diff.
+- Stable keys let an agent parse structure without guessing.
+- Markdown content remains comfortable for humans to read and edit.
+- Concepts can reference each other with `Related` IDs.
+- Function reference blocks let agents capture API and callable behavior without
+  breaking the one-file model.
+
+### Authoring rules
+1. Every concept must have a stable `ID`.
+2. Every concept must belong to exactly one `Category`.
+3. Summaries should stay short and descriptive.
+4. Update the frontmatter `updated` value every time the canonical knowledge file changes.
+5. The body should explain behavior, intent, and important files when relevant.
+6. Add function reference blocks when function-level behavior matters for safe
+   implementation or integration work.
+7. Document important exported or operationally significant callables, not every
+   trivial private helper.
+
+## Concept: Prompt Workflow
+ID: prompt-workflow
+Category: For humans
+Tags: ai, prompt, generation, authoring, maintenance
+Summary: Neenja uses a one-time bootstrap prompt to create the knowledge file and a runtime system prompt that makes agents read and maintain it during normal work.
+Related: knowledge-file-format, function-documentation
+
+### Prompts
+The prompt layer tells agents to:
+
+- use the bootstrap prompt for the first canonical documentation pass or a full regeneration pass
+- save the canonical documentation file at `/neenja/docs/neenja.knowledge.md`
+- inspect the real codebase before writing or updating documentation
+- read the canonical knowledge file before normal task execution
+- preserve stable IDs when updating documentation
+- add function reference blocks for APIs, handlers, services, hooks, and other
+  important callables when interface-level behavior matters
+- update the knowledge file at the end of a task when documentable behavior has
+  changed
+
+### Customization
+The prompts include a section where users can customize the documentation process for their project. This is optional, but it’s best to do so to ensure the tool works properly.
+
+### Important files
+- `prompts/neenja-documentation-bootstrap-prompt.md` [Bootstrap prompt]
+- `prompts/neenja-documentation-system-prompt.md` [System prompt]
+- `docs/neenja.knowledge.md` [Documentation file]
 
 ## Concept: Function Documentation
 ID: function-documentation
 Category: For AI
-Tags: functions, api, commands, reference
-Summary: Concepts can embed function reference blocks to describe CLI commands, integration surfaces, and other important callable interfaces.
-Related: knowledge-file-format, prompt-workflow, bundle-cli-workflow
+Tags: functions, api, reference, interfaces
+Summary: Concepts may embed repeatable function reference blocks to document APIs, handlers, services, and other important callable interfaces.
+Related: knowledge-file-format, prompt-workflow
 
 ### When to use it
-Use function reference blocks when another engineer or agent needs callable
-contracts without re-reading implementation code. In bundle-oriented projects,
-that commonly includes:
+Use function documentation inside a concept when another engineer or AI agent
+would need callable-level details to integrate safely or make changes without
+re-reading implementation code.
 
-- CLI commands such as `init`, `serve`, `build`, and deployment-oriented build commands
-- APIs that control the UI or trigger AI-facing workflows
-- exported utilities with side effects or important integration contracts
+Common cases include:
+
+- API route handlers and RPC methods
+- exported library functions and public utilities
+- service methods with side effects
+- React hooks and server actions
+- CLI commands and job entry points
 
 ### Recommended shape
-Inside the owning concept, describe each important callable with:
+Start with a `### Functions` section inside the owning concept. Then describe
+each important callable with a repeatable `#### Function:` block and include:
 
-- callable kind such as command, function, method, handler, hook, or endpoint
-- signature or invocation shape
+- callable kind such as function, method, handler, hook, or endpoint
+- signature or route shape
 - purpose
-- parameters or inputs
-- return value or output contract
+- parameters or request inputs
+- return value or response contract
 - side effects
 - important error cases
-- related bundle paths when they help another agent navigate safely
+- related implementation files when useful
+
+### API-specific guidance
+When the callable is an HTTP or RPC interface, adapt the same block to capture:
+
+- method and path or RPC name
+- authentication and authorization requirements
+- request payload or query parameters
+- response schema or status code expectations
+- idempotency or retry behavior when relevant
 
 ### Scope rules
-- Prefer documenting stable, user-facing, or integration-relevant callables
-- Avoid documenting trivial private helpers
-- Keep the documentation grounded in real behavior, not hypothetical APIs
+- Prefer documenting stable and externally meaningful callables over tiny
+  private helpers.
+- Group related functions inside the concept that owns the behavior rather than
+  scattering standalone one-function concepts everywhere.
+- Keep function docs grounded in real code, not hypothetical contracts.
+
+### Why it matters
+Function-level references let agents understand callable contracts, side
+effects, and integration expectations without having to reverse-engineer every
+important API or exported function from source code.

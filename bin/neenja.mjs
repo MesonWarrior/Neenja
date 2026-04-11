@@ -16,10 +16,10 @@ function printHelp() {
 
 Commands:
   init               Init Neenja in your project
-  serve [file]       Start the UI for knowledge file
-  build [file]       Build the UI
-  build-github [file]
-                     Build for GitHub Pages
+  serve              Start the UI for knowledge file
+  build              Build the UI
+  build-github       Build for GitHub Pages
+                     Requires: --domain <url> --page <path>
 
 Options:
   -f, --file <path>  Explicit path to the knowledge file
@@ -32,16 +32,18 @@ Notes:
 Examples:
   neenja init
   neenja serve
-  neenja serve ./docs/neenja.knowledge.md --port 4010
+  neenja serve --file ./docs/neenja.knowledge.md --port 4010
   neenja build
-  PUBLIC_SITE_URL=https://your_name.github.io PUBLIC_BASE_PATH=/your_repo/ neenja build-github
+  neenja build-github --domain https://your_name.github.io --page /your_repo/
 `);
 }
 
 function parseCommandArgs(rawArgs) {
   const options = {
+    domain: undefined,
     file: undefined,
     help: false,
+    page: undefined,
   };
   const passthroughArgs = [];
   const flagsWithRequiredValue = new Set([
@@ -78,6 +80,23 @@ function parseCommandArgs(rawArgs) {
       continue;
     }
 
+    if (arg === "--domain" || arg === "--page") {
+      const value = rawArgs[index + 1];
+
+      if (!value || value.startsWith("-")) {
+        throw new Error(`Missing value for ${arg}.`);
+      }
+
+      if (arg === "--domain") {
+        options.domain = value;
+      } else {
+        options.page = value;
+      }
+
+      index += 1;
+      continue;
+    }
+
     if (flagsWithRequiredValue.has(arg)) {
       const value = rawArgs[index + 1];
 
@@ -103,9 +122,10 @@ function parseCommandArgs(rawArgs) {
       continue;
     }
 
-    if (!arg.startsWith("-") && !options.file) {
-      options.file = arg;
-      continue;
+    if (!arg.startsWith("-")) {
+      throw new Error(
+        `Unexpected positional argument: ${arg}.\nUse -f <path> or --file <path> to specify the knowledge file.`,
+      );
     }
 
     passthroughArgs.push(arg);
@@ -147,7 +167,7 @@ async function resolveKnowledgePath(projectRoot, explicitPath) {
       ...candidatePaths.map((candidatePath) => `- ${candidatePath}`),
       "",
       "Run `neenja init` and then generate `neenja.knowledge.md` in the project root,",
-      "or provide a custom file with `--file`.",
+      "or provide a custom file with `-f` or `--file`.",
     ].join("\n"),
   );
 }
@@ -241,16 +261,15 @@ async function handleBuild(projectRoot, args) {
 async function handleBuildGithub(projectRoot, args) {
   const knowledgePath = await resolveKnowledgePath(projectRoot, args.options.file);
   const outDir = path.join(projectRoot, ".neenja", "build");
-  const isUsingPlaceholderSiteUrl = !process.env.PUBLIC_SITE_URL;
-  const isUsingPlaceholderBasePath = !process.env.PUBLIC_BASE_PATH;
+  const { domain, page } = args.options;
 
-  if (isUsingPlaceholderSiteUrl || isUsingPlaceholderBasePath) {
-    throw new Error("PUBLIC_SITE_URL or PUBLIC_BASE_PATH is not provided.");
+  if (!domain || !page) {
+    throw new Error("Missing required options for build-github: --domain <url> and --page <path>.");
   }
 
   const env = getSharedAstroEnv(projectRoot, knowledgePath, {
-    PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL,
-    PUBLIC_BASE_PATH: process.env.PUBLIC_BASE_PATH,
+    PUBLIC_SITE_URL: domain,
+    PUBLIC_BASE_PATH: page,
   });
 
   return runAstro("build", ["--outDir", outDir, ...args.passthroughArgs], env);

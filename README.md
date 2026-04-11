@@ -23,11 +23,11 @@ neenja build --file ./some/other/path.md
 ```
 
 ## GitHub pages build
-To build a GitHub Pages-ready bundle into `.neenja/build`, provide the same env
-vars as before and run:
+To build a GitHub Pages-ready bundle into `.neenja/build`, pass the site URL
+and base path as CLI parameters:
 
 ```bash
-PUBLIC_SITE_URL=https://your_name.github.io PUBLIC_BASE_PATH=/your_repo/ neenja build-github
+neenja build-github --domain https://your_name.github.io --page /your_repo/
 ```
 
 ## Made with
