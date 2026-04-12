@@ -1,6 +1,6 @@
 {
   "name": "neenja",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "CLI for bootstrapping, viewing, and building single-file AI-friendly project knowledge bases.",
   "bin": {
     "neenja": "./bin/neenja.mjs"
