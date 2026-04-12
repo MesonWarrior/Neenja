@@ -1,9 +1,11 @@
 import path from "node:path";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 
 const requireFromConfig = createRequire(import.meta.url);
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const astroPackageRoot = path.dirname(requireFromConfig.resolve("astro/package.json"));
 const githubRepository = process.env.GITHUB_REPOSITORY;
 const githubRepositoryOwner = process.env.GITHUB_REPOSITORY_OWNER;
@@ -23,9 +25,10 @@ export default defineConfig({
   vite: {
     server: {
       fs: {
-        // `npx neenja serve` may install `astro` next to the package, not inside it.
-        // Allow Astro's runtime files so Vite can serve the dev toolbar entrypoint.
-        allow: [astroPackageRoot],
+        // Setting a custom allow list replaces Vite defaults, so include both the
+        // Neenja package itself and Astro's installed package directory.
+        // This keeps dev imports and the Astro dev toolbar working under `npx`.
+        allow: [packageRoot, astroPackageRoot],
       },
     },
     resolve: {
