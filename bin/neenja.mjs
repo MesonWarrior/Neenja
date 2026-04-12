@@ -275,9 +275,9 @@ async function handleInit(projectRoot) {
   console.log(`- ${path.relative(projectRoot, systemPath)}`);
   console.log("");
   console.log("Next steps:");
-  console.log(`1. Open ${path.relative(projectRoot, bootstrapPath)} and give it to your agent once.`);
+  console.log(`1. Open ${path.relative(projectRoot, bootstrapPath)}, optionally change user-editable part of the prompt and give it to your agent once and give it to your agent once.`);
   console.log(`2. The agent should create ${defaultKnowledgeFileName} in the project root.`);
-  console.log(`3. Then use ${path.relative(projectRoot, systemPath)} as the ongoing system prompt.`);
+  console.log(`3. Optionally change user-editable part of the ${path.relative(projectRoot, systemPath)} prompt and use it as the ongoing system prompt.`);
   console.log(`4. Run "neenja serve" to view the UI or "neenja build" to build into ./.neenja/build.`);
 }
 
