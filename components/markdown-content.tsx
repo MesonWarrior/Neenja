@@ -1,5 +1,5 @@
-import { Check, Copy } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { Check, Copy } from "./icons";
 
 type ListItem = {
   text: string;

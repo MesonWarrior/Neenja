@@ -1,6 +1,6 @@
-import { ChevronDown, LockKeyhole, Menu, Search, X } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown, LockKeyhole, Menu, Search, X } from "./icons";
 import {
   FunctionReferenceSection,
   TypeReferenceSection,
