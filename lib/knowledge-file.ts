@@ -3,6 +3,10 @@ import path from "node:path";
 
 export const defaultKnowledgeDocumentFileName = "neenja.knowledge.md";
 
+export type DocumentationVisibility = "public" | "private";
+export type ConceptPrivacy = "public" | "private";
+export type ConceptKind = "concept" | "functions" | "types";
+
 export type FunctionField = {
   label: string;
   value: string;
@@ -19,35 +23,47 @@ export type ConceptFunction = {
   fields: FunctionField[];
 };
 
-export type ConceptContentBlock =
-  | {
-      type: "markdown";
-      content: string;
-    }
-  | {
-      type: "functions";
-      title: string;
-      intro: string;
-      functions: ConceptFunction[];
-    };
+export type ConceptType = {
+  id: string;
+  name: string;
+  kind: string;
+  definition: string;
+  description: string;
+  fields: FunctionField[];
+};
+
+export type ConceptContentBlock = {
+  type: "markdown";
+  content: string;
+};
 
 export type Concept = {
   id: string;
   title: string;
   category: string;
   categorySlug: string;
+  privacy: ConceptPrivacy;
+  kind: ConceptKind;
   tags: string[];
   summary: string;
   related: string[];
   content: string;
   contentBlocks: ConceptContentBlock[];
   functions: ConceptFunction[];
+  types: ConceptType[];
 };
 
 type CategoryGroup = {
   name: string;
   slug: string;
   concepts: Concept[];
+};
+
+export type TypeReferenceTarget = {
+  conceptId: string;
+  conceptTitle: string;
+  id: string;
+  name: string;
 };
 
 export type KnowledgeDocument = {
@@ -58,9 +74,11 @@ export type KnowledgeDocument = {
     updated: string;
     summary: string;
   };
+  visibility: DocumentationVisibility;
   concepts: Concept[];
   categories: CategoryGroup[];
   conceptsById: Record<string, Concept>;
+  typeIndex: Record<string, TypeReferenceTarget>;
 };
 
 export async function resolveKnowledgeDocumentPath(): Promise<string> {
@@ -170,7 +188,7 @@ function stripWrappingBackticks(value: string) {
 }
 
 function ensureUniqueId(baseId: string, usedIds: Set<string>) {
-  const normalizedBaseId = baseId || "function";
+  const normalizedBaseId = baseId || "entry";
 
   if (!usedIds.has(normalizedBaseId)) {
     usedIds.add(normalizedBaseId);
@@ -230,14 +248,11 @@ function getFunctionFieldItems(fields: FunctionField[], label: string) {
       : [];
 }
 
-function parseFunctionBlock(block: string, usedIds: Set<string>): ConceptFunction {
-  const lines = block.split("\n");
-  const rawName = lines[0].replace(/^#### Function:\s+/, "").trim();
-  const name = stripWrappingBackticks(rawName) || "Function";
+function parseReferenceFields(lines: string[]) {
   const fields: FunctionField[] = [];
   let currentField: FunctionField | null = null;
 
-  for (const line of lines.slice(1)) {
+  for (const line of lines) {
     const fieldMatch = /^([A-Za-z][A-Za-z ]+):\s*(.*)$/.exec(line);
 
     if (fieldMatch) {
@@ -277,6 +292,14 @@ function parseFunctionBlock(block: string, usedIds: Set<string>): ConceptFunctio
     fields.push(finalizeFunctionField(currentField));
   }
 
+  return fields;
+}
+
+function parseFunctionBlock(block: string, usedIds: Set<string>): ConceptFunction {
+  const lines = block.split("\n");
+  const rawName = lines[0].replace(/^#### Function:\s+/, "").trim();
+  const name = stripWrappingBackticks(rawName) || "Function";
+  const fields = parseReferenceFields(lines.slice(1));
   const functionSlug = slugify(name);
 
   return {
@@ -290,96 +313,69 @@ function parseFunctionBlock(block: string, usedIds: Set<string>): ConceptFunctio
   };
 }
 
-function parseFunctionSection(lines: string[]): Extract<ConceptContentBlock, { type: "functions" }> {
-  const [headingLine, ...sectionLines] = lines;
-  const introLines: string[] = [];
-  const functionBlocks: string[] = [];
-  let currentFunctionBlock: string[] = [];
-  let isInCodeBlock = false;
-
-  for (const line of sectionLines) {
-    const isFunctionStart = !isInCodeBlock && /^#### Function:\s+.+$/.test(line);
-
-    if (isFunctionStart) {
-      if (currentFunctionBlock.length > 0) {
-        functionBlocks.push(currentFunctionBlock.join("\n").trim());
-      }
-
-      currentFunctionBlock = [line];
-    } else if (currentFunctionBlock.length > 0) {
-      currentFunctionBlock.push(line);
-    } else {
-      introLines.push(line);
-    }
-
-    if (line.startsWith("```")) {
-      isInCodeBlock = !isInCodeBlock;
-    }
-  }
-
-  if (currentFunctionBlock.length > 0) {
-    functionBlocks.push(currentFunctionBlock.join("\n").trim());
-  }
-
-  const usedIds = new Set<string>();
+function parseTypeBlock(block: string, usedIds: Set<string>): ConceptType {
+  const lines = block.split("\n");
+  const rawName = lines[0].replace(/^#### Type:\s+/, "").trim();
+  const name = stripWrappingBackticks(rawName) || "Type";
+  const fields = parseReferenceFields(lines.slice(1));
+  const typeSlug = slugify(name);
 
   return {
-    type: "functions",
-    title: headingLine.replace(/^###\s+/, "").trim() || "Functions",
-    intro: introLines.join("\n").trim(),
-    functions: functionBlocks.filter(Boolean).map((block) => parseFunctionBlock(block, usedIds)),
+    id: ensureUniqueId(typeSlug ? `type-${typeSlug}` : "type", usedIds),
+    name,
+    kind: getFunctionFieldText(fields, "Kind"),
+    definition:
+      getFunctionFieldText(fields, "Definition") ||
+      getFunctionFieldText(fields, "Shape") ||
+      getFunctionFieldText(fields, "Signature"),
+    description: getFunctionFieldText(fields, "Description"),
+    fields,
   };
 }
 
-function parseConceptContent(content: string) {
-  const lines = content.replace(/\r\n/g, "\n").split("\n");
-  const blocks: ConceptContentBlock[] = [];
-  let currentMarkdownLines: string[] = [];
-  let currentFunctionSectionLines: string[] | null = null;
+function parseMarkdownBlocks(content: string) {
+  const trimmedContent = content.trim();
+
+  if (!trimmedContent) {
+    return [];
+  }
+
+  return [
+    {
+      type: "markdown" as const,
+      content: trimmedContent,
+    },
+  ];
+}
+
+function parseTypedConceptContent(content: string, kind: Exclude<ConceptKind, "concept">) {
+  const normalizedContent = content.replace(/\r\n/g, "\n");
+  const lines = normalizedContent.split("\n");
+  const introLines: string[] = [];
+  const referenceBlocks: string[] = [];
+  let currentReferenceLines: string[] = [];
   let isInCodeBlock = false;
-
-  const flushMarkdownBlock = () => {
-    const markdownContent = currentMarkdownLines.join("\n").trim();
-
-    if (markdownContent) {
-      blocks.push({
-        type: "markdown",
-        content: markdownContent,
-      });
-    }
-
-    currentMarkdownLines = [];
-  };
-
-  const flushFunctionSection = () => {
-    if (!currentFunctionSectionLines || currentFunctionSectionLines.length === 0) {
-      return;
-    }
-
-    blocks.push(parseFunctionSection(currentFunctionSectionLines));
-    currentFunctionSectionLines = null;
-  };
+  let hasSeenFirstReference = false;
+  const referenceStartPattern =
+    kind === "functions"
+      ? /^#### Function:\s+.+$/
+      : /^#### Type:\s+.+$/;
 
   for (const line of lines) {
-    const trimmedLine = line.trim();
-    const isFunctionsHeading = !isInCodeBlock && /^### Functions\s*$/.test(trimmedLine);
-    const isNextSectionHeading =
-      !isInCodeBlock &&
-      currentFunctionSectionLines !== null &&
-      /^###\s+.+$/.test(line) &&
-      !/^### Functions\s*$/.test(trimmedLine);
+    const isReferenceStart = !isInCodeBlock && referenceStartPattern.test(line);
 
-    if (isFunctionsHeading) {
-      flushMarkdownBlock();
-      flushFunctionSection();
-      currentFunctionSectionLines = [line];
-    } else if (isNextSectionHeading) {
-      flushFunctionSection();
-      currentMarkdownLines = [line];
-    } else if (currentFunctionSectionLines) {
-      currentFunctionSectionLines.push(line);
-    } else {
-      currentMarkdownLines.push(line);
+    if (isReferenceStart) {
+      hasSeenFirstReference = true;
+
+      if (currentReferenceLines.length > 0) {
+        referenceBlocks.push(currentReferenceLines.join("\n").trim());
+      }
+
+      currentReferenceLines = [line];
+    } else if (!hasSeenFirstReference) {
+      introLines.push(line);
+    } else if (currentReferenceLines.length > 0) {
+      currentReferenceLines.push(line);
     }
 
     if (line.startsWith("```")) {
@@ -387,13 +383,43 @@ function parseConceptContent(content: string) {
     }
   }
 
-  flushFunctionSection();
-  flushMarkdownBlock();
+  if (currentReferenceLines.length > 0) {
+    referenceBlocks.push(currentReferenceLines.join("\n").trim());
+  }
+
+  const usedIds = new Set<string>();
+  const functions =
+    kind === "functions"
+      ? referenceBlocks.filter(Boolean).map((block) => parseFunctionBlock(block, usedIds))
+      : [];
+  const types =
+    kind === "types"
+      ? referenceBlocks.filter(Boolean).map((block) => parseTypeBlock(block, usedIds))
+      : [];
 
   return {
-    contentBlocks: blocks,
-    functions: blocks.flatMap((block) => (block.type === "functions" ? block.functions : [])),
+    contentBlocks: parseMarkdownBlocks(introLines.join("\n")),
+    functions,
+    types,
   };
+}
+
+function normalizeConceptKind(value: string | undefined): ConceptKind {
+  const normalizedValue = value?.trim().toLowerCase();
+
+  if (normalizedValue === "functions") {
+    return "functions";
+  }
+
+  if (normalizedValue === "types") {
+    return "types";
+  }
+
+  return "concept";
+}
+
+function normalizeConceptPrivacy(value: string | undefined): ConceptPrivacy {
+  return value?.trim().toLowerCase() === "private" ? "private" : "public";
 }
 
 function parseConcept(block: string): Concept {
@@ -423,21 +449,40 @@ function parseConcept(block: string): Concept {
     bodyStartIndex = index + 1;
   }
 
+  const kind = normalizeConceptKind(metadata.type);
   const content = lines.slice(bodyStartIndex).join("\n").trim();
-  const { contentBlocks, functions } = parseConceptContent(content);
+  const parsedContent =
+    kind === "concept"
+      ? {
+          contentBlocks: parseMarkdownBlocks(content),
+          functions: [] as ConceptFunction[],
+          types: [] as ConceptType[],
+        }
+      : parseTypedConceptContent(content, kind);
 
   return {
     id: metadata.id || slugify(title),
     title,
     category: metadata.category || "General",
     categorySlug: slugify(metadata.category || "General"),
+    privacy: normalizeConceptPrivacy(metadata.privacy),
+    kind,
     tags: parseListValue(metadata.tags || ""),
     summary: metadata.summary || "",
     related: parseListValue(metadata.related || ""),
     content,
-    contentBlocks,
-    functions,
+    contentBlocks: parsedContent.contentBlocks,
+    functions: parsedContent.functions,
+    types: parsedContent.types,
   };
+}
+
+function orderCategoryConcepts(concepts: Concept[]) {
+  return [
+    ...concepts.filter((concept) => concept.kind === "concept"),
+    ...concepts.filter((concept) => concept.kind === "functions"),
+    ...concepts.filter((concept) => concept.kind === "types"),
+  ];
 }
 
 function groupByCategory(concepts: Concept[]) {
@@ -452,8 +497,39 @@ function groupByCategory(concepts: Concept[]) {
   return [...groups.entries()].map(([name, categoryConcepts]) => ({
     name,
     slug: slugify(name),
-    concepts: categoryConcepts,
+    concepts: orderCategoryConcepts(categoryConcepts),
   }));
+}
+
+function buildTypeIndex(concepts: Concept[]) {
+  const typeIndex: Record<string, TypeReferenceTarget> = {};
+
+  for (const concept of concepts) {
+    for (const typeReference of concept.types) {
+      if (typeIndex[typeReference.name]) {
+        continue;
+      }
+
+      typeIndex[typeReference.name] = {
+        conceptId: concept.id,
+        conceptTitle: concept.title,
+        id: typeReference.id,
+        name: typeReference.name,
+      };
+    }
+  }
+
+  return typeIndex;
+}
+
+function resolveDocumentationVisibility(): DocumentationVisibility {
+  const configuredVisibility = process.env.NEENJA_DOCS_VISIBILITY?.trim().toLowerCase();
+
+  if (configuredVisibility === "public" || configuredVisibility === "private") {
+    return configuredVisibility;
+  }
+
+  return process.env.NODE_ENV === "production" ? "public" : "private";
 }
 
 export async function readKnowledgeDocumentRaw() {
@@ -477,7 +553,12 @@ export async function readKnowledgeDocumentRaw() {
 export async function readKnowledgeDocument(): Promise<KnowledgeDocument> {
   const raw = await readKnowledgeDocumentRaw();
   const { meta, body } = parseFrontmatter(raw);
-  const concepts = splitConceptBlocks(body).map(parseConcept);
+  const parsedConcepts = splitConceptBlocks(body).map(parseConcept);
+  const visibility = resolveDocumentationVisibility();
+  const concepts =
+    visibility === "private"
+      ? parsedConcepts
+      : parsedConcepts.filter((concept) => concept.privacy === "public");
   const conceptsById = Object.fromEntries(concepts.map((concept) => [concept.id, concept]));
 
   return {
@@ -488,8 +569,10 @@ export async function readKnowledgeDocument(): Promise<KnowledgeDocument> {
       updated: meta.updated || "Unknown",
       summary: meta.summary || "Single-file project knowledge base.",
     },
+    visibility,
     concepts,
     categories: groupByCategory(concepts),
     conceptsById,
+    typeIndex: buildTypeIndex(concepts),
   };
 }

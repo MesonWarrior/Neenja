@@ -3,210 +3,435 @@ title: Neenja Documentation
 project: Neenja
 version: 1
 updated: 2026-04-12
-summary: Neenja is a tool that allows you to automatically generate a project documentation file using any AI coding agent, with automatic updates whenever changes are made.
+summary: Neenja keeps one AI-friendly project knowledge file current and renders it as a browsable documentation site.
 ---
 
 # Neenja Documentation
 
-This file is the single source of truth for the project. Every important concept
-must live here so an AI agent can understand the codebase by reading one file.
+Neenja stores project knowledge in one Markdown file and turns that file into a
+reader UI that humans and coding agents can both use.
 
 ## Concept: Platform Overview
 ID: platform-overview
-Category: For humans
-Tags: product, overview, goal
-Summary: Neenja is a documentation tool for vibecoding.
-Related: knowledge-file-format, prompt-workflow
+Privacy: public
+Type: concept
+Category: Product
+Tags: product, overview, workflow
+Summary: Neenja keeps one canonical knowledge file in sync with a project and renders it as a readable documentation site.
+Related: knowledge-file-format, prompt-workflow, cli-reference
 
 ### What it is
-The Neenja documentation tool allows you to automatically generate a project documentation file using any AI coding agent, with automatic updates whenever changes are made. It combines:
+Neenja combines three things:
 
-- one canonical project knowledge file
-- a bootstrap prompt that creates or refreshes that file
-- a runtime system prompt that makes working agents read and maintain that file
-- a parser and reader UI for this file, so human can read it
+- one canonical `neenja.knowledge.md` file
+- prompt templates that tell agents how to create and maintain that file
+- a reader UI that parses the file and exposes it as searchable documentation
 
-### Why?
-Over time, it becomes harder for humans to understand exactly what changes the coding agent has made, and the coding agent itself makes more mistakes in the project because it doesn’t understand the context. Neenja provides a simple documentation tool that allows the agent to understand the project’s structure and enables humans to verify whether the agent has completed its task correctly and whether the logic is working as intended.
+### Typical usage
+1. Run `neenja init` inside the target repository.
+2. Give `.neenja/prompts/bootstrap.md` to an agent once so it can generate the
+   first `neenja.knowledge.md`.
+3. Use `.neenja/prompts/system.md` as the ongoing system prompt so future agent
+   tasks keep the knowledge file current.
+4. Run `neenja serve` while working locally.
+5. Run `neenja build` when you need a static docs bundle.
 
-### How to use?
-1. Clone Neenja in your project.
-2. Customize and run bootstrap prompt [`prompts/neenja-documentation-bootstrap-prompt.md`].
-3. Set your agent's system prompt to this prompt: [`prompts/neenja-documentation-bootstrap-prompt.md`] or add this at the end if you're using the system prompt.
-4. To see the UI, go to the Neenja folder and run:
-```bash
-npm install
-npm run dev
-```
-Open `http://localhost:4321`
-5. To build the UI, go to the Neenja folder and run:
-```bash
-npm run build
-```
-Then you can copy `dist/` directory to serve it with a server.
-
-### GitHub pages build
-To build the project for github pages:
-1. Change `build:github-pages` script's parameters in `package.json` for your case.
-2. Run:
-```bash
-npm run build:github-pages
-```
-
-### What does it run on?
-This project is developed using React and uses Astro.
+### Rendering model
+- `serve` shows the whole documentation set by default, including internal
+  concepts.
+- `build` emits only the public subset by default, unless `--private` is passed
+  explicitly.
+- The sidebar marks private concepts with a dedicated icon.
 
 ## Concept: Knowledge File Format
 ID: knowledge-file-format
-Category: For AI
-Tags: format, markdown, structure, ai
-Summary: The knowledge base is stored in one Markdown file with frontmatter metadata, repeatable concept blocks, and optional function reference sections.
-Related: platform-overview, function-documentation
+Privacy: public
+Type: concept
+Category: Authoring
+Tags: format, markdown, schema, authoring
+Summary: The canonical knowledge file uses frontmatter plus typed concepts that can store prose, callable references, or structural type references.
+Related: platform-overview, prompt-workflow, knowledge-model-types
 
 ### Required structure
-The file starts with YAML-like frontmatter:
+Every documentation file starts with frontmatter:
 
 ```txt
 ---
 title: <document title>
 project: <project name>
-version: <schema version>
+version: 1
 updated: <YYYY-MM-DD>
 summary: <one sentence summary>
 ---
 ```
 
-After that, the file contains any introductory text and then one or more
-repeatable concept blocks:
+After that, the file contains one or more concept blocks:
 
 ```txt
 ## Concept: <Human Title>
 ID: <stable-machine-id>
+Privacy: <public|private>
+Type: <concept|functions|types>
 Category: <navigation group>
 Tags: tag-one, tag-two
 Summary: <one sentence summary>
 Related: concept-id-one, concept-id-two
-
-### Main section
-Concept explanation in Markdown.
 ```
 
-When a concept describes an API surface, service module, parser, exported
-utility, hook, or other callable interface, the concept body may also include a
-repeatable function reference section:
+### Concept types
+- `Type: concept` stores regular Markdown explanations, workflows, and notes.
+- `Type: functions` stores important callable surfaces with repeatable
+  `#### Function:` blocks.
+- `Type: types` stores important project structures with repeatable
+  `#### Type:` blocks.
+
+`### Functions` sections are not part of the schema. Functions and types live in
+dedicated concepts.
+
+### Structured reference blocks
+Functions concept bodies start with optional intro Markdown and then repeat this
+block:
 
 ```txt
-### Functions
-#### Function: `parseKnowledgeDocument`
-Kind: function
-Signature: `parseKnowledgeDocument(document: string): ParsedData`
-Description: Parse the canonical knowledge file into the reader data model.
+#### Function: `neenja serve`
+Kind: cli command
+Signature: `neenja serve [--file <path>] [--private | --public]`
+Description: Start the reader UI for the canonical knowledge file.
 Parameters:
-- document: string - Text document in Markdown format.
+- --file <path>: string - Explicit path to the knowledge file.
 ```
 
-### Authoring rules
-1. Every concept must have a stable `ID`.
-2. Every concept must belong to exactly one `Category`.
-3. Summaries should stay short and descriptive.
-4. Update the frontmatter `updated` value every time the canonical knowledge file changes.
-5. The body should explain behavior, intent, and important files when relevant.
-6. Add function reference blocks when function-level behavior matters for safe
-   implementation or integration work.
-7. Document important exported or operationally significant callables, not every
-   trivial private helper.
+Types concept bodies start with optional intro Markdown and then repeat this
+block:
 
-### Functions examples
-Below is an example of what functions look like in concepts.
+```txt
+#### Type: `KnowledgeDocument`
+Kind: object
+Description: Parsed documentation payload exposed to the reader UI.
+Fields:
+- concepts: `Concept[]` - Visible concepts after privacy filtering.
+```
 
-### Functions
-#### Function: `parseKnowledgeDocument`
-Kind: function
-Signature: parseKnowledgeDocument(document: string): ParsedData
-Description: Parse the canonical knowledge file into the reader data model.
-Parameters:
-- document: string - Text document in Markdown format.
+`Definition` is optional. It should contain a real structural shape or alias
+when that adds value, and it should be omitted when `Fields` already explain a
+large object clearly enough. Writing only the type name in `Definition` is not
+useful.
 
-#### Function: `readKnowledgeDocumentRaw`
-Kind: function
-Signature: readKnowledgeDocumentRaw(): string
-Description: Load the canonical Markdown knowledge file as raw text and returns it.
+### Visibility metadata
+- `Privacy: public` is for information that should ship to consumers,
+  integrators, and developers who use the project without editing its internals.
+- `Privacy: private` is for implementation details, exact file names, internal
+  helper behavior, maintainer guidance, and agent-only context.
+
+Visibility is authoring metadata. It controls filtering, but it is not rendered
+inside the main document body. The sidebar only marks concepts that are
+private.
+
+### Type links
+When a function signature or the type part of a `Parameters` or `Fields` list
+item uses the same type name as a documented `#### Type:` entry, the reader
+turns that type name into a link to the matching type reference.
 
 ## Concept: Prompt Workflow
 ID: prompt-workflow
-Category: For humans
-Tags: ai, prompt, generation, authoring, maintenance
-Summary: Neenja uses a one-time bootstrap prompt to create the knowledge file and a runtime system prompt that makes agents read and maintain it during normal work.
-Related: knowledge-file-format, function-documentation
+Privacy: public
+Type: concept
+Category: Authoring
+Tags: prompts, ai, maintenance, workflow
+Summary: Neenja uses a bootstrap prompt for initial generation and a system prompt for ongoing documentation maintenance.
+Related: platform-overview, knowledge-file-format, internal-runtime-functions
 
-### Prompts
-The prompt layer tells agents to:
+### Bootstrap prompt
+`.neenja/prompts/bootstrap.md` is a one-time generation prompt. It tells the
+agent to inspect the repository, classify each concept by visibility and type,
+and write or refresh `neenja.knowledge.md` in the repository root.
 
-- use the bootstrap prompt for the first canonical documentation pass or a full regeneration pass
-- save the canonical documentation file at `/neenja/docs/neenja.knowledge.md`
-- inspect the real codebase before writing or updating documentation
-- read the canonical knowledge file before normal task execution
-- preserve stable IDs when updating documentation
-- add function reference blocks for APIs, handlers, services, hooks, and other
-  important callables when interface-level behavior matters
-- update the knowledge file at the end of a task when documentable behavior has
-  changed
+### System prompt
+`.neenja/prompts/system.md` is the ongoing maintenance prompt. It tells working
+agents to read `neenja.knowledge.md` at the start of each task and update it
+before finishing when documentable behavior changed.
 
-### Customization
-The prompts include a section where users can customize the documentation process for their project. This is optional, but it’s best to do so to ensure the tool works properly.
+### Maintenance rules
+- keep all canonical project documentation in `neenja.knowledge.md`
+- preserve stable concept IDs
+- update the frontmatter `updated` field whenever the file changes
+- prefer editing existing concepts over creating near-duplicates
+- keep public concepts usable as external-facing reference material
+- keep private concepts implementation-grounded and useful to maintainers and
+  agents
 
-### Important files
-- `prompts/neenja-documentation-bootstrap-prompt.md` [Bootstrap prompt]
-- `prompts/neenja-documentation-system-prompt.md` [System prompt]
-- `docs/neenja.knowledge.md` [Documentation file]
+## Concept: CLI Reference
+ID: cli-reference
+Privacy: public
+Type: functions
+Category: Product
+Tags: cli, commands, workflow
+Summary: The Neenja CLI initializes prompt bundles and serves or builds the documentation reader from one canonical knowledge file.
+Related: platform-overview, knowledge-file-format
 
-## Concept: Function Documentation
-ID: function-documentation
-Category: For AI
-Tags: functions, api, reference, interfaces
-Summary: Concepts may embed repeatable function reference blocks to document APIs, handlers, services, and other important callable interfaces.
-Related: knowledge-file-format, prompt-workflow
+The CLI is the main external interface for working with Neenja as a tool.
 
-### When to use it
-Use function documentation inside a concept when another engineer or AI agent
-would need callable-level details to integrate safely or make changes without
-re-reading implementation code.
+#### Function: `neenja init`
+Kind: cli command
+Signature: `neenja init`
+Description: Prepare the local `.neenja/` bundle with bootstrap and system prompt templates.
+Behavior:
+- Creates `.neenja/prompts/` in the current project if it does not exist.
+- Copies bundled prompt templates only when the target files are missing.
+- Leaves existing prompt files untouched so local customization is preserved.
 
-Common cases include:
+#### Function: `neenja serve`
+Kind: cli command
+Signature: `neenja serve [--file <path>] [--private | --public]`
+Description: Start the local reader UI against the canonical knowledge file.
+Parameters:
+- `--file <path>`: `string` - Explicit path to the knowledge file.
+- `--private`: `boolean` - Include private concepts in the rendered docs.
+- `--public`: `boolean` - Restrict the rendered docs to public concepts only.
+Behavior:
+- Resolves the knowledge file path.
+- Launches Astro in dev mode.
+- Defaults to showing the full documentation set, including private concepts.
 
-- API route handlers and RPC methods
-- exported library functions and public utilities
-- service methods with side effects
-- React hooks and server actions
-- CLI commands and job entry points
+#### Function: `neenja build`
+Kind: cli command
+Signature: `neenja build [--file <path>] [--private | --public]`
+Description: Build the reader as a static site in `.neenja/build`.
+Parameters:
+- `--file <path>`: `string` - Explicit path to the knowledge file.
+- `--private`: `boolean` - Build the full documentation set, including private concepts.
+- `--public`: `boolean` - Build only the public documentation subset.
+Behavior:
+- Uses the same parser and renderer as `serve`.
+- Defaults to the public subset so generated static docs can be published safely.
 
-### Recommended shape
-Start with a `### Functions` section inside the owning concept. Then describe
-each important callable with a repeatable `#### Function:` block and include:
+#### Function: `neenja build-github`
+Kind: cli command
+Signature: `neenja build-github --domain <url> --page <path> [--private | --public]`
+Description: Build the reader for GitHub Pages with explicit site and base-path values.
+Parameters:
+- `--domain <url>`: `string` - Site origin for the generated build.
+- `--page <path>`: `string` - Base path under that origin.
+- `--private`: `boolean` - Include private concepts in the build.
+- `--public`: `boolean` - Restrict the build to the public subset.
 
-- callable kind such as function, method, handler, hook, or endpoint
-- signature or route shape
-- description
-- parameters or request inputs when the callable accepts them
-- additional fields only when they add real integration or operational value
+## Concept: Knowledge Model Types
+ID: knowledge-model-types
+Privacy: public
+Type: types
+Category: Authoring
+Tags: types, schema, model, renderer
+Summary: Neenja parses the knowledge file into a typed in-memory model that powers filtering, navigation, search, and cross-links.
+Related: knowledge-file-format, internal-runtime-functions
 
-### API-specific guidance
-When the callable is an HTTP or RPC interface, adapt the same block to capture:
+These are the main structured values used by the parser and reader.
 
-- method and path or RPC name
-- authentication and authorization requirements
-- request payload or query parameters
-- response schema or status code expectations
-- idempotency or retry behavior when relevant
+#### Type: `DocumentMeta`
+Kind: object
+Definition: `{ title: string; project: string; version: string; updated: string; summary: string }`
+Description: Frontmatter metadata exposed by the reader UI.
+Fields:
+- title: `string` - Rendered document title.
+- project: `string` - Project name from frontmatter.
+- version: `string` - Schema version marker stored in the file.
+- updated: `string` - Last canonical documentation update date.
+- summary: `string` - Short description shown in the reader shell.
 
-### Scope rules
-- Prefer documenting stable and externally meaningful callables over tiny
-  private helpers.
-- Group related functions inside the concept that owns the behavior rather than
-  scattering standalone one-function concepts everywhere.
-- Keep function docs grounded in real code, not hypothetical contracts.
+#### Type: `DocumentationVisibility`
+Kind: union
+Definition: `"public" | "private"`
+Description: Active visibility mode used for the current run.
 
-### Why it matters
-Function-level references let agents understand callable contracts, side
-effects, and integration expectations without having to reverse-engineer every
-important API or exported function from source code.
+#### Type: `ConceptPrivacy`
+Kind: union
+Definition: `"public" | "private"`
+Description: Visibility assigned to one concept in the canonical file.
+
+#### Type: `ConceptKind`
+Kind: union
+Definition: `"concept" | "functions" | "types"`
+Description: Renderer mode for a concept body.
+
+#### Type: `ConceptContentBlock`
+Kind: object
+Definition: `{ type: "markdown"; content: string }`
+Description: Markdown block rendered before structured function or type entries.
+Fields:
+- type: `"markdown"` - Block discriminator.
+- content: `string` - Markdown content ready for the reader body.
+
+#### Type: `FunctionField`
+Kind: object
+Definition: `{ label: string; value: string; items: string[] }`
+Description: Structured field captured from a function or type reference block.
+Fields:
+- label: `string` - Original field name such as `Parameters` or `Fields`.
+- value: `string` - Inline text stored on the same line as the field label.
+- items: `string[]` - List items collected under that field.
+
+#### Type: `ConceptFunction`
+Kind: object
+Description: Structured function entry parsed from a `Type: functions` concept.
+Fields:
+- id: `string` - Stable anchor ID generated for the function card.
+- name: `string` - Display name taken from the `#### Function:` heading.
+- kind: `string` - Callable classification such as function, endpoint, or cli command.
+- signature: `string` - Signature or route shape shown in the card header.
+- description: `string` - Short explanation of behavior.
+- parameters: `string[]` - Flattened parameter lines for search and quick access.
+- fields: `FunctionField[]` - All structured fields captured from the block.
+
+#### Type: `ConceptType`
+Kind: object
+Description: Structured type entry parsed from a `Type: types` concept.
+Fields:
+- id: `string` - Stable anchor ID generated for the type card.
+- name: `string` - Display name taken from the `#### Type:` heading.
+- kind: `string` - Type classification such as object, union, or schema.
+- definition: `string` - Compact type shape or alias description.
+- description: `string` - Short explanation of what the type represents.
+- fields: `FunctionField[]` - All structured fields captured from the block.
+
+#### Type: `Concept`
+Kind: object
+Description: Parsed concept with metadata, Markdown content, and optional structured entries.
+Fields:
+- id: `string` - Stable machine-readable concept ID.
+- title: `string` - Human-readable concept title.
+- category: `string` - Sidebar category name.
+- categorySlug: `string` - Normalized category key used by the UI.
+- privacy: `ConceptPrivacy` - Visibility metadata for filtering.
+- kind: `ConceptKind` - Concept renderer mode.
+- tags: `string[]` - Searchable tag list.
+- summary: `string` - Short description used in cards and search.
+- related: `string[]` - Related concept IDs.
+- content: `string` - Raw concept body.
+- contentBlocks: `ConceptContentBlock[]` - Markdown content rendered before structured entries.
+- functions: `ConceptFunction[]` - Function entries owned by the concept.
+- types: `ConceptType[]` - Type entries owned by the concept.
+
+#### Type: `CategoryGroup`
+Kind: object
+Definition: `{ name: string; slug: string; concepts: Concept[] }`
+Description: Sidebar navigation group with concepts already ordered for display.
+Fields:
+- name: `string` - Visible category label.
+- slug: `string` - Normalized category key.
+- concepts: `Concept[]` - Visible concepts in sidebar order.
+
+#### Type: `TypeReferenceTarget`
+Kind: object
+Definition: `{ conceptId: string; conceptTitle: string; id: string; name: string }`
+Description: Link target for turning type names into documentation anchors.
+Fields:
+- conceptId: `string` - Owning concept ID.
+- conceptTitle: `string` - Owning concept title.
+- id: `string` - Type entry anchor ID.
+- name: `string` - Documented type name.
+
+#### Type: `KnowledgeDocument`
+Kind: object
+Description: Parsed documentation payload consumed by the reader shell.
+Fields:
+- meta: `DocumentMeta` - Frontmatter metadata.
+- visibility: `DocumentationVisibility` - Active visibility mode for this run.
+- concepts: `Concept[]` - Visible concepts after privacy filtering.
+- categories: `CategoryGroup[]` - Visible concepts grouped for navigation.
+- conceptsById: `Record<string, Concept>` - Visible concepts keyed by ID.
+- typeIndex: `Record<string, TypeReferenceTarget>` - Lookup table for inline type links.
+
+## Concept: Parser Pipeline
+ID: parser-pipeline
+Privacy: private
+Type: concept
+Category: Internal
+Tags: parser, filtering, architecture
+Summary: The parser reads one Markdown file, extracts typed concepts, filters them by visibility, and prepares the reader data model.
+Related: knowledge-file-format, knowledge-model-types, internal-runtime-functions
+
+### Main flow
+The parser lives in `lib/knowledge-file.ts`. It:
+
+1. resolves the canonical file path from `NEENJA_KNOWLEDGE_PATH` or the project
+   root
+2. reads the raw Markdown file from disk
+3. parses frontmatter and splits the body into `## Concept:` blocks
+4. converts each concept into a typed in-memory record
+5. filters private concepts out when the active visibility mode is `public`
+6. groups visible concepts by category and builds a type lookup index
+
+### Visibility defaults
+- `NEENJA_DOCS_VISIBILITY=private` means the reader keeps both public and
+  private concepts.
+- `NEENJA_DOCS_VISIBILITY=public` means only public concepts survive the final
+  document model.
+- When no explicit visibility flag is provided, dev mode defaults to the full
+  set and production mode defaults to the public subset.
+
+## Concept: Reader Navigation Internals
+ID: reader-navigation-internals
+Privacy: private
+Type: concept
+Category: Internal
+Tags: ui, navigation, search, reader
+Summary: The docs shell manages category expansion, search, hash-based entry navigation, and inline type links across concept pages.
+Related: parser-pipeline, internal-runtime-functions, knowledge-model-types
+
+### Key files
+- `components/docs-shell.tsx`
+- `components/function-reference.tsx`
+- `components/markdown-content.tsx`
+- `src/pages/index.astro`
+- `src/pages/[conceptId].astro`
+
+### Behavior
+- The sidebar lists normal concepts first, then function concepts, then type
+  concepts within each category.
+- The sidebar shows a private-only indicator and leaves public concepts
+  unlabeled.
+- Function and type entries stay collapsed in the sidebar until the owning
+  concept is the active page.
+- Search returns concepts, function entries, and type entries separately.
+- Inline type references inside function and type cards use `typeIndex` to link
+  back to the owning `TypeReferenceTarget`.
+
+## Concept: Internal Runtime Functions
+ID: internal-runtime-functions
+Privacy: private
+Type: functions
+Category: Internal
+Tags: parser, runtime, reader, internals
+Summary: Internal runtime helpers parse concept blocks, resolve visibility, and build the document model used by the reader.
+Related: parser-pipeline, reader-navigation-internals, knowledge-model-types
+
+These functions are implementation details of the bundled reader, not part of a
+stable public API.
+
+#### Function: `readKnowledgeDocument`
+Kind: function
+Signature: `readKnowledgeDocument(): Promise<KnowledgeDocument>`
+Description: Load, parse, filter, and index the canonical knowledge file for the active visibility mode.
+Behavior:
+- Reads raw Markdown from disk.
+- Parses concepts and their structured entries.
+- Filters concepts when visibility is `public`.
+- Builds `conceptsById`, grouped categories, and `typeIndex`.
+
+#### Function: `parseConcept`
+Kind: function
+Signature: `parseConcept(block: string): Concept`
+Description: Parse one `## Concept:` block into the in-memory concept model.
+Behavior:
+- Reads concept metadata such as `ID`, `Privacy`, `Type`, and `Category`.
+- Routes the body through the Markdown parser or structured entry parser based
+  on `ConceptKind`.
+
+#### Function: `buildTypeIndex`
+Kind: function
+Signature: `buildTypeIndex(concepts: Concept[]): Record<string, TypeReferenceTarget>`
+Description: Collect the first visible occurrence of each documented type name so inline type mentions can navigate to the matching type entry.
+
+#### Function: `resolveDocumentationVisibility`
+Kind: function
+Signature: `resolveDocumentationVisibility(): DocumentationVisibility`
+Description: Decide whether the current run should expose the full docs set or only the public subset.

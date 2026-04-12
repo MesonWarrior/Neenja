@@ -24,6 +24,8 @@ Commands:
 
 Options:
   -f, --file <path>  Explicit path to the knowledge file
+  --private          Include private concepts in the rendered documentation
+  --public           Render only public concepts
   -h, --help         Show this help
 
 Notes:
@@ -32,8 +34,10 @@ Notes:
 Examples:
   neenja init
   neenja serve
+  neenja serve --public
   neenja serve --file ./some/other/path.md --port 4010
   neenja build
+  neenja build --private
   neenja build-github --domain https://your_name.github.io --page /your_repo/
 `);
 }
@@ -44,6 +48,7 @@ function parseCommandArgs(rawArgs) {
     file: undefined,
     help: false,
     page: undefined,
+    visibility: undefined,
   };
   const passthroughArgs = [];
   const flagsWithRequiredValue = new Set([
@@ -94,6 +99,17 @@ function parseCommandArgs(rawArgs) {
       }
 
       index += 1;
+      continue;
+    }
+
+    if (arg === "--private" || arg === "--public") {
+      const nextVisibility = arg === "--private" ? "private" : "public";
+
+      if (options.visibility && options.visibility !== nextVisibility) {
+        throw new Error("Use only one visibility flag: either --private or --public.");
+      }
+
+      options.visibility = nextVisibility;
       continue;
     }
 
@@ -168,6 +184,10 @@ async function resolveKnowledgePath(projectRoot, explicitPath) {
       "or provide a custom file with \"-f\" or \"--file\".",
     ].join("\n"),
   );
+}
+
+function resolveVisibility(mode, fallbackVisibility) {
+  return mode ?? fallbackVisibility;
 }
 
 function getSharedAstroEnv(projectRoot, knowledgePath, extraEnv = {}) {
@@ -263,14 +283,18 @@ async function handleInit(projectRoot) {
 
 async function handleServe(projectRoot, args) {
   const knowledgePath = await resolveKnowledgePath(projectRoot, args.options.file);
-  const env = getSharedAstroEnv(projectRoot, knowledgePath);
+  const env = getSharedAstroEnv(projectRoot, knowledgePath, {
+    NEENJA_DOCS_VISIBILITY: resolveVisibility(args.options.visibility, "private"),
+  });
   return runAstro("dev", args.passthroughArgs, env);
 }
 
 async function handleBuild(projectRoot, args) {
   const knowledgePath = await resolveKnowledgePath(projectRoot, args.options.file);
   const outDir = path.join(projectRoot, ".neenja", "build");
-  const env = getSharedAstroEnv(projectRoot, knowledgePath);
+  const env = getSharedAstroEnv(projectRoot, knowledgePath, {
+    NEENJA_DOCS_VISIBILITY: resolveVisibility(args.options.visibility, "public"),
+  });
   return runAstro("build", ["--outDir", outDir, ...args.passthroughArgs], env);
 }
 
@@ -284,6 +308,7 @@ async function handleBuildGithub(projectRoot, args) {
   }
 
   const env = getSharedAstroEnv(projectRoot, knowledgePath, {
+    NEENJA_DOCS_VISIBILITY: resolveVisibility(args.options.visibility, "public"),
     PUBLIC_SITE_URL: domain,
     PUBLIC_BASE_PATH: page,
   });

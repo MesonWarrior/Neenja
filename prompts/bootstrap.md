@@ -8,7 +8,8 @@ you do not need that constraint.
 - Preferred categories or taxonomy: <optional>
 - Must-document areas: <optional>
 - Excluded areas or details that should stay undocumented: <optional>
-- API and function documentation expectations: <optional>
+- Public vs internal documentation expectations: <optional>
+- API, function, and type documentation expectations: <optional>
 - Style, tone, or target audience preferences: <optional>
 - Extra project-specific documentation rules: <optional>
 
@@ -30,22 +31,23 @@ Hard requirements:
 
 1. The entire project documentation must live in one file only.
 2. Write the final documentation directly at `./neenja.knowledge.md` in
-  the repository root.
+   the repository root.
 3. Do not create multiple docs, wiki pages, or split knowledge across extra
    files.
 4. Prefer updating the existing canonical file if it already exists.
 5. Base the documentation on the real codebase, not on assumptions.
 6. Write stable concept IDs and keep them unchanged across updates.
-7. Document architecture, workflows, important entities, and
-   important APIs or functions when that level of detail matters.
-8. Keep the writing dense, factual, and useful for another coding AI agent.
-9. Do not leave helper notes, scratch files, or temporary artifacts behind.
+7. Every concept must have both a privacy level and a concept type.
+8. Document architecture, workflows, important entities, and important APIs,
+   functions, and types when that level of detail matters.
+9. Keep the writing dense, factual, and useful for another coding AI agent.
+10. Do not leave helper notes, scratch files, or temporary artifacts behind.
 
 Required knowledge file format:
 
 ```txt
 ---
-title: <document title>
+title: <document title ending with "Documentation">
 project: <project name>
 version: 1
 updated: <YYYY-MM-DD>
@@ -58,51 +60,68 @@ summary: <one-sentence summary of the whole project>
 
 ## Concept: <Human Title>
 ID: <stable-machine-id>
+Privacy: <public|private>
+Type: <concept|functions|types>
 Category: <single category name>
 Tags: tag-one, tag-two, tag-three
 Summary: <one-sentence summary>
 Related: concept-id-one, concept-id-two
+```
 
-### Purpose
-Explain what this concept is and why it exists.
+Concept body rules:
 
-### Behavior
-Explain how it works in practice.
+- `Type: concept`
+  Use Markdown sections and free-form explanatory content.
+- `Type: functions`
+  Start with optional intro Markdown, then repeat function blocks:
 
-### Notes
-Add constraints, caveats, integration details, or operational guidance.
-
-### Functions
+```txt
 #### Function: <name>
-Kind: <function|method|handler|hook|endpoint>
+Kind: <function|method|handler|hook|endpoint|cli command>
 Signature: <call signature or route shape>
-Description: <description of the function, what it does and what it returns>
+Description: <description of the callable surface>
 Parameters:
 - <name>: <type (optional)> - <description>
 ```
 
-The document title must end with "Documentation".
+- `Type: types`
+  Start with optional intro Markdown, then repeat type blocks:
 
-The `### Functions` section is optional. Use it when a concept covers an API,
-exported utility, handler, hook, job entry point, parser, or other callable
-interface whose behavior should be discoverable without reading implementation
-code. 
-Note: If a function has no parameters, just don't create a "Parameters" field.
+```txt
+#### Type: <name>
+Kind: <object|type alias|interface|enum|schema|payload>
+Definition: <type shape, alias, or compact structure, optional>
+Description: <description of what this type represents>
+Fields:
+- <field name>: <type> - <description>
+```
 
 Concept authoring rules:
 
 - Every concept must start with `## Concept:`.
-- Every concept must include `ID`, `Category`, `Tags`, `Summary`, and `Related`.
+- Every concept must include `ID`, `Privacy`, `Type`, `Category`, `Tags`,
+  `Summary`, and `Related`.
 - Use exactly one category per concept.
 - Use comma-separated tags and related concept IDs.
 - Keep summaries short and specific.
-- Use Markdown in the body.
-- Add function reference blocks when documenting APIs or other important
-  callables with non-trivial behavior.
-- For HTTP or RPC interfaces, use the same function block format to capture
-  method/path, auth requirements, inputs, responses, and important error cases.
-- Do not document every trivial private helper; focus on stable, externally
-  useful, or operationally significant functions.
+- `Privacy: public` is for material that should ship to consumers,
+  integrators, plugin authors, or developers who use the project without
+  editing its internals.
+- `Privacy: private` is for implementation details, internal files, concrete
+  helper functions, maintainer guidance, and agent-only context.
+- Do not mention the visibility split in reader-facing prose. Treat it as
+  authoring metadata only.
+- Do not use `### Functions` or `### Types` sections inside normal concepts.
+- Use dedicated `Type: functions` concepts for callable surfaces.
+- Use dedicated `Type: types` concepts for important data structures and
+  schemas, even in dynamically typed languages.
+- Function concepts should keep `Signature`.
+- Type concepts may omit `Definition` when `Fields` already describe a large
+  object or other verbose key-value structure well enough.
+- Never set `Definition` to just the type name. Either write a real structural
+  definition or omit the field.
+- Use documented type names consistently so Neenja can link function signatures
+  and field types back to their type reference entries.
 - Prefer a few strong concepts over many shallow concepts.
 - Merge duplicates instead of creating overlapping entries.
 
@@ -111,10 +130,11 @@ Repository analysis workflow:
 1. Inspect the project structure before writing documentation.
 2. Read `./neenja.knowledge.md` first if it already exists.
 3. Identify the main product purpose and user-facing capabilities.
-4. Identify architectural layers, data flows, and major modules.
-5. Identify operational knowledge, setup rules, and integration constraints.
-6. Extract the concepts and important APIs/functions that another coding AI
-   agent would need to work safely.
+4. Separate documentation that should be public from documentation that is only
+   useful internally for maintainers and coding agents.
+5. Identify architectural layers, data flows, and major modules.
+6. Identify operational knowledge, setup rules, integration constraints, and
+   externally meaningful APIs, commands, and types.
 7. Write or update the single canonical documentation file at the required
    path.
 
@@ -126,8 +146,9 @@ Quality bar:
   context.
 - The file should balance breadth and signal: comprehensive, but not bloated.
 - The document should reflect the current state of the codebase.
-- When function-level behavior matters, it should be documented in-place inside
-  the relevant concept rather than omitted or split into separate files.
+- Public concepts should be usable as product-facing reference material.
+- Private concepts should help maintainers and agents work safely inside the
+  repository.
 
 What to avoid:
 
