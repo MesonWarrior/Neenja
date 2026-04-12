@@ -7,6 +7,8 @@ Neenja is a tool that allows you to automatically generate a project documentati
 ## Example
 [Neenja Documentation page](https://mesonwarrior.github.io/neenja-docs/)
 
+<img src="https://mesonwarrior.github.io/neenja-docs/doc_screen.png" alt="Neenja" style="width: 100%">
+
 ## How to use?
 1. Run `npx neenja init` in the target project.
 2. Open `.neenja/prompts/bootstrap.md`, optionally change user-editable part of the prompt and give it to your agent once.
