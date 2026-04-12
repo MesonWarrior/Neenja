@@ -24,6 +24,11 @@ You can also point the UI and build commands to a custom file:
 ```bash
 npx neenja serve -f ./some/other/neenja.knowledge.md
 npx neenja build -f ./some/other/neenja.knowledge.md
+```
+
+By default, `build` only builds public concepts, and serve shows both public and private ones, but you can change the display of private concepts using --public to --private:
+
+```bash
 npx neenja serve --public
 npx neenja build --private
 ```
