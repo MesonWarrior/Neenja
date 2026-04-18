@@ -10,13 +10,14 @@ Neenja is a tool that allows you to automatically generate a project documentati
 <img src="https://mesonwarrior.github.io/neenja-docs/doc_screen.png" alt="Neenja" style="width: 100%">
 
 ## How to use?
-1. Run `npx neenja init` in the target project.
-2. Open `.neenja/prompts/bootstrap.md`, optionally change user-editable part of the prompt and give it to your agent once.
-3. The agent creates `./neenja.knowledge.md` in the project root.
-4. Optionally change user-editable part of the `.neenja/prompts/system.md` prompt and use as the ongoing system prompt.
-5. Run `npx neenja serve` to open the UI for the knowledge file. By default it
+1. Run `npx skills add MesonWarrior/Neenja --all`.
+2. Use `/neenja-bootstrap` once to inspect the repository and create
+   `./.neenja/neenja.knowledge.md`. You can pass one optional single-line
+   preferences string, and the agent should save it in frontmatter as
+   `preferences:` directly under `summary:`.
+3. Run `npx neenja serve` to open the UI for the knowledge file. By default it
    shows the full docs set, including internal concepts.
-6. Run `npx neenja build` to generate a static reader bundle into
+4. Run `npx neenja build` to generate a static reader bundle into
    `.neenja/build`. By default it builds only the public documentation subset.
 
 You can also point the UI and build commands to a custom file:

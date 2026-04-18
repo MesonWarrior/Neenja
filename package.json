@@ -1,7 +1,7 @@
 {
   "name": "neenja",
   "version": "0.2.4",
-  "description": "CLI for bootstrapping, viewing, and building single-file AI-friendly project knowledge bases.",
+  "description": "CLI for viewing, and building single-file AI-friendly project knowledge bases.",
   "bin": {
     "neenja": "./bin/neenja.mjs"
   },
@@ -10,7 +10,7 @@
     "bin",
     "components",
     "lib",
-    "prompts",
+    "skills",
     "public",
     "src",
     "tsconfig.json"

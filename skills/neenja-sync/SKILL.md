@@ -1,42 +1,38 @@
-# Neenja Documentation Maintenance System Prompt
+---
+name: neenja-sync
+description: Use on every task in a Neenja-enabled repository. Read `.neenja/neenja.knowledge.md` before work, use it as project context, and update it before finishing whenever the task changed behavior that belongs in the canonical documentation. Respect the frontmatter `preferences:` value when it exists.
+---
 
-## User-Editable Documentation Preferences
-Edit this section before using the system prompt. Leave any line empty if you do
-not need that constraint.
+# Neenja Sync
 
-- Documentation goals: <optional>
-- Must-document changes: <optional>
-- Changes or details that should stay undocumented: <optional>
-- Preferred categories or taxonomy: <optional>
-- Public vs internal documentation expectations: <optional>
-- API, function, and type documentation expectations: <optional>
-- Style, tone, or target audience preferences: <optional>
-- Extra project-specific documentation rules: <optional>
+Use this skill on every normal agent task after the documentation has been
+bootstrapped.
 
-You are a coding agent working in a repository that uses Neenja.
+## Canonical documentation file
 
-Canonical documentation file:
+- Repo-relative canonical path: `.neenja/neenja.knowledge.md`
+- The file lives inside `.neenja/`, alongside the build output.
 
-- Repo-relative canonical path: `neenja.knowledge.md`
-- The file lives in the repository root, not inside `.neenja/`
+## Documentation-first workflow
 
-Documentation-first workflow:
-
-1. At the start of every task, read `./neenja.knowledge.md` before
+1. At the start of every task, read `./.neenja/neenja.knowledge.md` before
    planning, editing code, or answering questions about the project.
 2. Use the documentation to build context about the architecture, workflows,
    terminology, and important constraints.
-3. If the documentation conflicts with the code, treat the code as the current
+3. If the documentation frontmatter contains `preferences:`, follow those
+   saved user preferences whenever you add, remove, reorganize, or rewrite
+   documentation.
+4. If the documentation conflicts with the code, treat the code as the current
    implementation and update the documentation before you finish the task.
-4. Complete the assigned task using both the codebase and the canonical
+5. Complete the assigned task using both the codebase and the canonical
    documentation as context.
-5. Before you finish, decide whether your changes introduced or materially
+6. Before you finish, decide whether your changes introduced or materially
    changed anything that belongs in the canonical documentation.
-6. If the answer is yes, update `./neenja.knowledge.md` in the same
+7. If the answer is yes, update `./.neenja/neenja.knowledge.md` in the same
    task before your final response.
-7. If the answer is no, do not churn the documentation file just to touch it.
+8. If the answer is no, do not churn the documentation file just to touch it.
 
-Required knowledge file format:
+## Required knowledge file format
 
 ```txt
 ---
@@ -45,6 +41,7 @@ project: <project name>
 version: 1
 updated: <YYYY-MM-DD>
 summary: <one-sentence summary of the whole project>
+preferences: <optional single-line user documentation preferences>
 ---
 
 # <Document Title>
@@ -61,7 +58,9 @@ Summary: <one-sentence summary>
 Related: concept-id-one, concept-id-two
 ```
 
-Concept body rules:
+If there is no saved user preferences string, omit the `preferences:` line.
+
+## Concept body rules
 
 - `Type: concept`
   Use normal Markdown sections for explanatory documentation.
@@ -89,7 +88,7 @@ Fields:
 - <field name>: <type> - <description>
 ```
 
-Authoring rules:
+## Authoring rules
 
 - Every concept must include `ID`, `Privacy`, `Type`, `Category`, `Tags`,
   `Summary`, and `Related`.
@@ -111,11 +110,11 @@ Authoring rules:
 - Preserve stable concept IDs once introduced.
 - Prefer editing existing concepts instead of creating near-duplicates.
 - Add or update `Related` links when concepts depend on each other.
-- Use documented type names consistently so function and type renderers can link
-  them together.
+- Use documented type names consistently so function and type renderers can
+  link them together.
 - Keep the writing factual, implementation-grounded, and concise.
 
-What usually belongs in the documentation:
+## What usually belongs in the documentation
 
 - new or changed architecture, module responsibilities, or data flow
 - new workflows, commands, setup rules, or operational constraints
@@ -127,21 +126,19 @@ What usually belongs in the documentation:
 - new side effects, permissions, auth rules, error cases, or behavioral caveats
 - new concepts that another AI agent would need in order to work safely
 
-What usually does not need documentation:
+## What usually does not need documentation
 
 - trivial private helper refactors with no behavior change
 - formatting-only or naming-only edits
 - temporary debugging code
 - implementation noise that does not change how the system works
 
-If the canonical knowledge file does not exist yet:
+## If the canonical knowledge file does not exist yet
 
-- Create `./neenja.knowledge.md`.
-- Use the Neenja bootstrap prompt in
-  `.neenja/prompts/bootstrap.md` as the structure guide for the initial
-  document.
+- Create `./.neenja/neenja.knowledge.md`.
+- Follow the bootstrap guidance from the `/neenja-bootstrap` skill.
 
-Final rule:
+## Final rule
 
 Always read the canonical documentation file first, and always update it before
 finishing a task when you changed something that should be documented.

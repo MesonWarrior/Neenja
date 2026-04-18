@@ -1,22 +1,21 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { access, copyFile, mkdir, readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const promptsTemplateDir = path.join(packageRoot, "prompts");
-const defaultKnowledgeFileName = "neenja.knowledge.md";
+const defaultKnowledgeFilePath = path.join(".neenja", "neenja.knowledge.md");
+const defaultKnowledgeFileDisplayPath = ".neenja/neenja.knowledge.md";
 const requireFromCli = createRequire(import.meta.url);
 
 function printHelp() {
   console.log(`neenja <command> [options]
 
 Commands:
-  init               Init Neenja in your project
   serve              Start the UI for knowledge file
   build              Build the UI
   build-github       Build for GitHub Pages
@@ -29,10 +28,9 @@ Options:
   -h, --help         Show this help
 
 Notes:
-  - If no file is provided, Neenja looks for ./neenja.knowledge.md.
+  - If no file is provided, Neenja looks for ./${defaultKnowledgeFileDisplayPath}.
 
 Examples:
-  neenja init
   neenja serve
   neenja serve --public
   neenja serve --file ./some/other/path.md --port 4010
@@ -165,7 +163,7 @@ async function pathExists(targetPath) {
 async function resolveKnowledgePath(projectRoot, explicitPath) {
   const candidatePaths = explicitPath
     ? [path.resolve(projectRoot, explicitPath)]
-    : [path.join(projectRoot, defaultKnowledgeFileName)];
+    : [path.join(projectRoot, defaultKnowledgeFilePath)];
 
   for (const candidatePath of candidatePaths) {
     if (await pathExists(candidatePath)) {
@@ -180,7 +178,7 @@ async function resolveKnowledgePath(projectRoot, explicitPath) {
       "Checked paths:",
       ...candidatePaths.map((candidatePath) => `- ${candidatePath}`),
       "",
-      "Run \"neenja init\" and then generate \"neenja.knowledge.md\" in the project root,",
+      "Run \"npx skills add MesonWarrior/Neenja --all\" and then use \"/neenja-bootstrap\" to generate \".neenja/neenja.knowledge.md\",",
       "or provide a custom file with \"-f\" or \"--file\".",
     ].join("\n"),
   );
@@ -238,49 +236,6 @@ async function runAstro(command, astroArgs, env) {
   });
 }
 
-async function copyTemplateIfMissing(fromPath, toPath) {
-  if (await pathExists(toPath)) {
-    return false;
-  }
-
-  await copyFile(fromPath, toPath);
-  return true;
-}
-
-async function handleInit(projectRoot) {
-  const neenjaDir = path.join(projectRoot, ".neenja");
-  const promptsDir = path.join(neenjaDir, "prompts");
-  const bootstrapPath = path.join(promptsDir, "bootstrap.md");
-  const systemPath = path.join(promptsDir, "system.md");
-
-  await mkdir(promptsDir, { recursive: true });
-
-  const bootstrapCreated = await copyTemplateIfMissing(
-    path.join(promptsTemplateDir, "bootstrap.md"),
-    bootstrapPath,
-  );
-  const systemCreated = await copyTemplateIfMissing(
-    path.join(promptsTemplateDir, "system.md"),
-    systemPath,
-  );
-
-  console.log(`Neenja has prepared your local bundle in ${path.relative(projectRoot, neenjaDir) || ".neenja"}`);
-  console.log("");
-  console.log(
-    bootstrapCreated || systemCreated
-      ? "Created prompt files:"
-      : "Prompt files already existed, so they were left untouched:",
-  );
-  console.log(`- ${path.relative(projectRoot, bootstrapPath)}`);
-  console.log(`- ${path.relative(projectRoot, systemPath)}`);
-  console.log("");
-  console.log("Next steps:");
-  console.log(`1. Open ${path.relative(projectRoot, bootstrapPath)}, optionally change user-editable part of the prompt and give it to your agent once and give it to your agent once.`);
-  console.log(`2. The agent should create ${defaultKnowledgeFileName} in the project root.`);
-  console.log(`3. Optionally change user-editable part of the ${path.relative(projectRoot, systemPath)} prompt and use it as the ongoing system prompt.`);
-  console.log(`4. Run "neenja serve" to view the UI or "neenja build" to build into ./.neenja/build.`);
-}
-
 async function handleServe(projectRoot, args) {
   const knowledgePath = await resolveKnowledgePath(projectRoot, args.options.file);
   const env = getSharedAstroEnv(projectRoot, knowledgePath, {
@@ -336,9 +291,6 @@ async function main() {
   let exitCode = 0;
 
   switch (command) {
-    case "init":
-      await handleInit(projectRoot);
-      break;
     case "serve":
       exitCode = await handleServe(projectRoot, parsedArgs);
       break;

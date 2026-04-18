@@ -2,7 +2,7 @@
 title: Neenja Documentation
 project: Neenja
 version: 1
-updated: 2026-04-12
+updated: 2026-04-18
 summary: Neenja keeps one AI-friendly project knowledge file current and renders it as a browsable documentation site.
 ---
 
@@ -23,18 +23,21 @@ Related: knowledge-file-format, prompt-workflow, cli-reference
 ### What it is
 Neenja combines three things:
 
-- one canonical `neenja.knowledge.md` file
-- prompt templates that tell agents how to create and maintain that file
+- one canonical `.neenja/neenja.knowledge.md` file
+- agent skills that tell agents how to create and maintain that file
 - a reader UI that parses the file and exposes it as searchable documentation
 
 ### Typical usage
-1. Run `neenja init` inside the target repository.
-2. Give `.neenja/prompts/bootstrap.md` to an agent once so it can generate the
-   first `neenja.knowledge.md`.
-3. Use `.neenja/prompts/system.md` as the ongoing system prompt so future agent
-   tasks keep the knowledge file current.
+1. Run `npx skills add MesonWarrior/Neenja --all`.
+2. Use `/neenja-bootstrap` once so an agent can generate the first
+   `.neenja/neenja.knowledge.md`.
+3. Optionally pass `/neenja-bootstrap` one single-line user preferences string
+   so it gets saved in the knowledge file frontmatter as `preferences:`.
 4. Run `neenja serve` while working locally.
 5. Run `neenja build` when you need a static docs bundle.
+
+After the skills are installed, `neenja-sync` should be applied by the model
+automatically on later tasks so the documentation stays current.
 
 ### Rendering model
 - `serve` shows the whole documentation set by default, including internal
@@ -53,6 +56,8 @@ Summary: The canonical knowledge file uses frontmatter plus typed concepts that 
 Related: platform-overview, prompt-workflow, knowledge-model-types
 
 ### Required structure
+The canonical documentation file lives at `./.neenja/neenja.knowledge.md`.
+
 Every documentation file starts with frontmatter:
 
 ```txt
@@ -62,8 +67,12 @@ project: <project name>
 version: 1
 updated: <YYYY-MM-DD>
 summary: <one sentence summary>
+preferences: <optional single-line user documentation preferences>
 ---
 ```
+
+If `preferences:` is present, it stores one line of user guidance for Neenja's
+agent skills. The reader UI does not render that field.
 
 After that, the file contains one or more concept blocks:
 
@@ -132,27 +141,46 @@ When a function signature or the type part of a `Parameters` or `Fields` list
 item uses the same type name as a documented `#### Type:` entry, the reader
 turns that type name into a link to the matching type reference.
 
-## Concept: Prompt Workflow
+## Concept: Skill Workflow
 ID: prompt-workflow
 Privacy: public
 Type: concept
 Category: Authoring
-Tags: prompts, ai, maintenance, workflow
-Summary: Neenja uses a bootstrap prompt for initial generation and a system prompt for ongoing documentation maintenance.
+Tags: skills, ai, maintenance, workflow
+Summary: Neenja uses `/neenja-bootstrap` for initial generation and `neenja-sync` for ongoing documentation maintenance.
 Related: platform-overview, knowledge-file-format, internal-runtime-functions
 
-### Bootstrap prompt
-`.neenja/prompts/bootstrap.md` is a one-time generation prompt. It tells the
-agent to inspect the repository, classify each concept by visibility and type,
-and write or refresh `neenja.knowledge.md` in the repository root.
+### Installing the skills
+Install the Neenja skills with:
 
-### System prompt
-`.neenja/prompts/system.md` is the ongoing maintenance prompt. It tells working
-agents to read `neenja.knowledge.md` at the start of each task and update it
-before finishing when documentable behavior changed.
+```bash
+npx skills add MesonWarrior/Neenja --all
+```
+
+This installs the `neenja-bootstrap` and `neenja-sync` skills for the agent.
+
+### `neenja-bootstrap`
+`/neenja-bootstrap` is the one-time generation skill. It tells the agent to
+inspect the repository, classify each concept by visibility and type, and write
+or refresh `.neenja/neenja.knowledge.md`.
+
+The `neenja-bootstrap` skill accepts one optional single-line preferences
+argument. When present, the agent writes that value into the knowledge file
+frontmatter as
+`preferences:` directly under `summary:`.
+
+### `neenja-sync`
+`neenja-sync` is the ongoing maintenance skill. It tells working agents to read
+`.neenja/neenja.knowledge.md` at the start of each task and update it before
+finishing when documentable behavior changed.
+
+The `neenja-sync` skill reads the saved `preferences:` frontmatter value when it exists
+and uses that guidance while changing documentation. It does not rely on a
+separate user-editable prompt block, and it should be applied by the model
+automatically on later tasks.
 
 ### Maintenance rules
-- keep all canonical project documentation in `neenja.knowledge.md`
+- keep all canonical project documentation in `.neenja/neenja.knowledge.md`
 - preserve stable concept IDs
 - update the frontmatter `updated` field whenever the file changes
 - prefer editing existing concepts over creating near-duplicates
@@ -166,19 +194,10 @@ Privacy: public
 Type: functions
 Category: Product
 Tags: cli, commands, workflow
-Summary: The Neenja CLI initializes prompt bundles and serves or builds the documentation reader from one canonical knowledge file.
+Summary: The Neenja CLI serves or builds the documentation reader from one canonical knowledge file inside `.neenja`.
 Related: platform-overview, knowledge-file-format
 
 The CLI is the main external interface for working with Neenja as a tool.
-
-#### Function: `neenja init`
-Kind: cli command
-Signature: `neenja init`
-Description: Prepare the local `.neenja/` bundle with bootstrap and system prompt templates.
-Behavior:
-- Creates `.neenja/prompts/` in the current project if it does not exist.
-- Copies bundled prompt templates only when the target files are missing.
-- Leaves existing prompt files untouched so local customization is preserved.
 
 #### Function: `neenja serve`
 Kind: cli command
@@ -189,7 +208,7 @@ Parameters:
 - `--private`: `boolean` - Include private concepts in the rendered docs.
 - `--public`: `boolean` - Restrict the rendered docs to public concepts only.
 Behavior:
-- Resolves the knowledge file path.
+- Resolves `.neenja/neenja.knowledge.md` by default unless `--file` overrides it.
 - Launches Astro in dev mode.
 - Defaults to showing the full documentation set, including private concepts.
 
@@ -203,6 +222,7 @@ Parameters:
 - `--public`: `boolean` - Build only the public documentation subset.
 Behavior:
 - Uses the same parser and renderer as `serve`.
+- Resolves `.neenja/neenja.knowledge.md` by default unless `--file` overrides it.
 - Defaults to the public subset so generated static docs can be published safely.
 
 #### Function: `neenja build-github`
@@ -353,7 +373,7 @@ Related: knowledge-file-format, knowledge-model-types, internal-runtime-function
 The parser lives in `lib/knowledge-file.ts`. It:
 
 1. resolves the canonical file path from `NEENJA_KNOWLEDGE_PATH` or the project
-   root
+   `.neenja/neenja.knowledge.md` location under the project root
 2. reads the raw Markdown file from disk
 3. parses frontmatter and splits the body into `## Concept:` blocks
 4. converts each concept into a typed in-memory record

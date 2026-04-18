@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-export const defaultKnowledgeDocumentFileName = "neenja.knowledge.md";
+export const defaultKnowledgeDocumentFileName = ".neenja/neenja.knowledge.md";
 
 export type DocumentationVisibility = "public" | "private";
 export type ConceptPrivacy = "public" | "private";

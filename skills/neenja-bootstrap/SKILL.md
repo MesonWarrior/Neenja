@@ -1,37 +1,34 @@
-# Neenja Documentation Bootstrap Prompt
+---
+name: neenja-bootstrap
+description: Use when a repository is initializing Neenja documentation or needs a full regeneration of `.neenja/neenja.knowledge.md`. Inspect the real codebase, create or refresh the single canonical knowledge file inside `.neenja`, and accept one optional single-line preferences argument that must be written to frontmatter as `preferences:` directly under `summary:`.
+---
 
-## User-Editable Documentation Preferences
-Edit this section before giving the prompt to the agent. Leave any line empty if
-you do not need that constraint.
+# Neenja Bootstrap
 
-- Documentation goals: <optional>
-- Preferred categories or taxonomy: <optional>
-- Must-document areas: <optional>
-- Excluded areas or details that should stay undocumented: <optional>
-- Public vs internal documentation expectations: <optional>
-- API, function, and type documentation expectations: <optional>
-- Style, tone, or target audience preferences: <optional>
-- Extra project-specific documentation rules: <optional>
+Use this skill to create or fully refresh the canonical Neenja knowledge file.
 
-You are a documentation agent for software projects.
+## Optional input
 
-Your task is to inspect the repository and create exactly one
-canonical documentation file for the project. The result must be optimized for
-AI agents first while remaining readable for humans.
+This skill accepts one optional argument: a single-line string of user
+documentation preferences.
 
-Canonical output location:
+- If the argument is provided, write it to the knowledge file frontmatter as
+  `preferences: <value>` immediately after `summary:`.
+- Treat that string as documentation guidance for scope, taxonomy, tone,
+  emphasis, exclusions, or audience.
+- If no preferences string is provided, omit the `preferences:` line.
 
-- Save the finished documentation file to `neenja.knowledge.md` in the
-  repository root.
-- Do not place the canonical knowledge file inside `.neenja/`. The `.neenja/`
-  directory stores bundle assets such as prompts and builds, while the
-  knowledge file stays at the top level of the user's project.
+## Canonical output location
 
-Hard requirements:
+- Save the finished documentation file to `./.neenja/neenja.knowledge.md`.
+- The `.neenja/` directory stores the canonical knowledge file and build
+  output for the project.
+- Do not place the canonical knowledge file in the repository root.
+
+## Hard requirements
 
 1. The entire project documentation must live in one file only.
-2. Write the final documentation directly at `./neenja.knowledge.md` in
-   the repository root.
+2. Write the final documentation directly at `./.neenja/neenja.knowledge.md`.
 3. Do not create multiple docs, wiki pages, or split knowledge across extra
    files.
 4. Prefer updating the existing canonical file if it already exists.
@@ -43,7 +40,7 @@ Hard requirements:
 9. Keep the writing dense, factual, and useful for another coding AI agent.
 10. Do not leave helper notes, scratch files, or temporary artifacts behind.
 
-Required knowledge file format:
+## Required knowledge file format
 
 ```txt
 ---
@@ -52,6 +49,7 @@ project: <project name>
 version: 1
 updated: <YYYY-MM-DD>
 summary: <one-sentence summary of the whole project>
+preferences: <optional single-line user documentation preferences>
 ---
 
 # <Document Title>
@@ -68,7 +66,9 @@ Summary: <one-sentence summary>
 Related: concept-id-one, concept-id-two
 ```
 
-Concept body rules:
+If there is no user preferences string, omit the `preferences:` line.
+
+## Concept body rules
 
 - `Type: concept`
   Use Markdown sections and free-form explanatory content.
@@ -96,7 +96,7 @@ Fields:
 - <field name>: <type> - <description>
 ```
 
-Concept authoring rules:
+## Concept authoring rules
 
 - Every concept must start with `## Concept:`.
 - Every concept must include `ID`, `Privacy`, `Type`, `Category`, `Tags`,
@@ -120,15 +120,15 @@ Concept authoring rules:
   object or other verbose key-value structure well enough.
 - Never set `Definition` to just the type name. Either write a real structural
   definition or omit the field.
-- Use documented type names consistently so Neenja can link function signatures
-  and field types back to their type reference entries.
+- Use documented type names consistently so Neenja can link function
+  signatures and field types back to their type reference entries.
 - Prefer a few strong concepts over many shallow concepts.
 - Merge duplicates instead of creating overlapping entries.
 
-Repository analysis workflow:
+## Repository analysis workflow
 
 1. Inspect the project structure before writing documentation.
-2. Read `./neenja.knowledge.md` first if it already exists.
+2. Read `./.neenja/neenja.knowledge.md` first if it already exists.
 3. Identify the main product purpose and user-facing capabilities.
 4. Separate documentation that should be public from documentation that is only
    useful internally for maintainers and coding agents.
@@ -138,7 +138,7 @@ Repository analysis workflow:
 7. Write or update the single canonical documentation file at the required
    path.
 
-Quality bar:
+## Quality bar
 
 - Another AI agent should be able to understand the project by reading only this
   file.
@@ -150,7 +150,7 @@ Quality bar:
 - Private concepts should help maintainers and agents work safely inside the
   repository.
 
-What to avoid:
+## What to avoid
 
 - vague statements with no implementation grounding
 - duplicating the same idea in multiple concepts
@@ -158,8 +158,8 @@ What to avoid:
 - undocumented assumptions
 - spreading documentation across multiple files
 
-Final rule:
+## Final rule
 
 The finished deliverable is one documentation file saved at
-`./neenja.knowledge.md` in the repository root. If you generate helper notes
-during analysis, do not keep them as separate artifacts.
+`./.neenja/neenja.knowledge.md`. If you generate helper notes during analysis,
+do not keep them as separate artifacts.
