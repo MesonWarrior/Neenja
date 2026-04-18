@@ -1,7 +1,8 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-export const defaultKnowledgeDocumentFileName = ".neenja/neenja.knowledge.md";
+export const defaultKnowledgeDocumentFileName = ".neenja/documentation.md";
+export const legacyKnowledgeDocumentFileName = "neenja.knowledge.md";
 
 export type DocumentationVisibility = "public" | "private";
 export type ConceptPrivacy = "public" | "private";
@@ -91,7 +92,14 @@ export async function resolveKnowledgeDocumentPath(): Promise<string> {
   const projectRoot = process.env.NEENJA_PROJECT_ROOT
     ? path.resolve(process.env.NEENJA_PROJECT_ROOT)
     : process.cwd();
-  return path.join(projectRoot, defaultKnowledgeDocumentFileName);
+  const canonicalPath = path.join(projectRoot, defaultKnowledgeDocumentFileName);
+
+  try {
+    await fs.access(canonicalPath);
+    return canonicalPath;
+  } catch {
+    return path.join(projectRoot, legacyKnowledgeDocumentFileName);
+  }
 }
 
 function parseFrontmatter(raw: string) {

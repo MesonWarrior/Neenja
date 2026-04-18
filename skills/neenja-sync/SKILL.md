@@ -1,6 +1,6 @@
 ---
 name: neenja-sync
-description: Use on every task in a Neenja-enabled repository. Read `.neenja/neenja.knowledge.md` before work, use it as project context, and update it before finishing whenever the task changed behavior that belongs in the canonical documentation. Respect the frontmatter `preferences:` value when it exists.
+description: Use on every task in a Neenja-enabled repository. Read `.neenja/documentation.md` before work, use it as project context, and update it before finishing whenever the task changed behavior that belongs in the canonical documentation. Respect the frontmatter `preferences:` value when it exists.
 ---
 
 # Neenja Sync
@@ -10,12 +10,12 @@ bootstrapped.
 
 ## Canonical documentation file
 
-- Repo-relative canonical path: `.neenja/neenja.knowledge.md`
+- Repo-relative canonical path: `.neenja/documentation.md`
 - The file lives inside `.neenja/`, alongside the build output.
 
 ## Documentation-first workflow
 
-1. At the start of every task, read `./.neenja/neenja.knowledge.md` before
+1. At the start of every task, read `./.neenja/documentation.md` before
    planning, editing code, or answering questions about the project.
 2. Use the documentation to build context about the architecture, workflows,
    terminology, and important constraints.
@@ -28,7 +28,7 @@ bootstrapped.
    documentation as context.
 6. Before you finish, decide whether your changes introduced or materially
    changed anything that belongs in the canonical documentation.
-7. If the answer is yes, update `./.neenja/neenja.knowledge.md` in the same
+7. If the answer is yes, update `./.neenja/documentation.md` in the same
    task before your final response.
 8. If the answer is no, do not churn the documentation file just to touch it.
 
@@ -135,7 +135,7 @@ Fields:
 
 ## If the canonical knowledge file does not exist yet
 
-- Create `./.neenja/neenja.knowledge.md`.
+- Create `./.neenja/documentation.md`.
 - Follow the bootstrap guidance from the `/neenja-bootstrap` skill.
 
 ## Final rule

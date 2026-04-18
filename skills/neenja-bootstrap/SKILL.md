@@ -1,6 +1,6 @@
 ---
 name: neenja-bootstrap
-description: Use when a repository is initializing Neenja documentation or needs a full regeneration of `.neenja/neenja.knowledge.md`. Inspect the real codebase, create or refresh the single canonical knowledge file inside `.neenja`, and accept one optional single-line preferences argument that must be written to frontmatter as `preferences:` directly under `summary:`.
+description: Use when a repository is initializing Neenja documentation or needs a full regeneration of `.neenja/documentation.md`. Inspect the real codebase, create or refresh the single canonical knowledge file inside `.neenja`, and accept one optional single-line preferences argument that must be written to frontmatter as `preferences:` directly under `summary:`.
 ---
 
 # Neenja Bootstrap
@@ -20,7 +20,7 @@ documentation preferences.
 
 ## Canonical output location
 
-- Save the finished documentation file to `./.neenja/neenja.knowledge.md`.
+- Save the finished documentation file to `./.neenja/documentation.md`.
 - The `.neenja/` directory stores the canonical knowledge file and build
   output for the project.
 - Do not place the canonical knowledge file in the repository root.
@@ -28,7 +28,7 @@ documentation preferences.
 ## Hard requirements
 
 1. The entire project documentation must live in one file only.
-2. Write the final documentation directly at `./.neenja/neenja.knowledge.md`.
+2. Write the final documentation directly at `./.neenja/documentation.md`.
 3. Do not create multiple docs, wiki pages, or split knowledge across extra
    files.
 4. Prefer updating the existing canonical file if it already exists.
@@ -128,7 +128,7 @@ Fields:
 ## Repository analysis workflow
 
 1. Inspect the project structure before writing documentation.
-2. Read `./.neenja/neenja.knowledge.md` first if it already exists.
+2. Read `./.neenja/documentation.md` first if it already exists.
 3. Identify the main product purpose and user-facing capabilities.
 4. Separate documentation that should be public from documentation that is only
    useful internally for maintainers and coding agents.
@@ -161,5 +161,5 @@ Fields:
 ## Final rule
 
 The finished deliverable is one documentation file saved at
-`./.neenja/neenja.knowledge.md`. If you generate helper notes during analysis,
+`./.neenja/documentation.md`. If you generate helper notes during analysis,
 do not keep them as separate artifacts.

@@ -8,8 +8,10 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const defaultKnowledgeFilePath = path.join(".neenja", "neenja.knowledge.md");
-const defaultKnowledgeFileDisplayPath = ".neenja/neenja.knowledge.md";
+const defaultKnowledgeFilePath = path.join(".neenja", "documentation.md");
+const defaultKnowledgeFileDisplayPath = ".neenja/documentation.md";
+const legacyKnowledgeFilePath = "neenja.knowledge.md";
+const legacyKnowledgeFileDisplayPath = "./neenja.knowledge.md";
 const requireFromCli = createRequire(import.meta.url);
 
 function printHelp() {
@@ -28,7 +30,8 @@ Options:
   -h, --help         Show this help
 
 Notes:
-  - If no file is provided, Neenja looks for ./${defaultKnowledgeFileDisplayPath}.
+  - If no file is provided, Neenja looks for ./${defaultKnowledgeFileDisplayPath}
+    and falls back to ${legacyKnowledgeFileDisplayPath}.
 
 Examples:
   neenja serve
@@ -163,7 +166,10 @@ async function pathExists(targetPath) {
 async function resolveKnowledgePath(projectRoot, explicitPath) {
   const candidatePaths = explicitPath
     ? [path.resolve(projectRoot, explicitPath)]
-    : [path.join(projectRoot, defaultKnowledgeFilePath)];
+    : [
+        path.join(projectRoot, defaultKnowledgeFilePath),
+        path.join(projectRoot, legacyKnowledgeFilePath),
+      ];
 
   for (const candidatePath of candidatePaths) {
     if (await pathExists(candidatePath)) {
@@ -178,7 +184,7 @@ async function resolveKnowledgePath(projectRoot, explicitPath) {
       "Checked paths:",
       ...candidatePaths.map((candidatePath) => `- ${candidatePath}`),
       "",
-      "Run \"npx skills add MesonWarrior/Neenja --all\" and then use \"/neenja-bootstrap\" to generate \".neenja/neenja.knowledge.md\",",
+      "Run \"npx skills add MesonWarrior/Neenja --all\" and then use \"/neenja-bootstrap\" to generate \".neenja/documentation.md\",",
       "or provide a custom file with \"-f\" or \"--file\".",
     ].join("\n"),
   );
