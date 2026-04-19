@@ -1,5 +1,5 @@
 ---
-name: neenja-plan-init
+name: neenja-init
 description: Use at the beginning of a project when the user describes what they want to build. Convert the user's detailed brief into a structured `.neenja/project-plan.md`, save optional user preferences in frontmatter, and ask the user to review and correct the plan before treating it as approved.
 ---
 

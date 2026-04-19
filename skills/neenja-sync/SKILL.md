@@ -144,7 +144,7 @@ Fields:
 ## If the project plan does not exist yet
 
 - Do not invent a project plan during sync unless the user asks for planning.
-- If the user is starting a project from a brief, use `/neenja-plan-init`.
+- If the user is starting a project from a brief, use `/neenja-init`.
 
 ## Final rule
 

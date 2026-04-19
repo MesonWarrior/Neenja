@@ -11,7 +11,7 @@ Neenja is a tool that allows you to automatically generate project documentation
 
 ## How to use?
 1. Run `npx skills add MesonWarrior/Neenja --all`.
-2. Use `/neenja-plan-init` at the beginning of a project when you want an agent
+2. Use `/neenja-init` at the beginning of a project when you want an agent
    to turn your detailed brief into `./.neenja/project-plan.md`.
 3. Use `/neenja-bootstrap` once to inspect the repository and create
    `./.neenja/documentation.md`. You can pass one optional single-line

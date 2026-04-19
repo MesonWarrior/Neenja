@@ -38,7 +38,7 @@ folder are ignored by the reader.
 
 ### Typical usage
 1. Run `npx skills add MesonWarrior/Neenja --all`.
-2. Use `/neenja-plan-init` at the start of a project when the user gives the
+2. Use `/neenja-init` at the start of a project when the user gives the
    product brief and wants a structured plan candidate for review.
 3. Use `/neenja-bootstrap` once so an agent can generate
    `.neenja/documentation.md` from the actual repository.
@@ -180,8 +180,8 @@ Install the Neenja skills with:
 npx skills add MesonWarrior/Neenja --all
 ```
 
-### `neenja-plan-init`
-`/neenja-plan-init` is the project planning skill. Use it at the start of a
+### `neenja-init`
+`/neenja-init` is the project planning skill. Use it at the start of a
 project after the user describes what they want to build.
 
 The skill writes `.neenja/project-plan.md` in the structured `## Plan:` format.

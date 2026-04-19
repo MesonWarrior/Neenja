@@ -47,7 +47,7 @@ In Scope:
 - project-plan Markdown schema
 - project-plan reader UI
 - sample plan file for local testing
-- `/neenja-plan-init` skill for creating an approved project plan from user intent
+- `/neenja-init` skill for creating an approved project plan from user intent
 Out Of Scope:
 - editing documents inside the browser
 - syncing with remote planning systems
