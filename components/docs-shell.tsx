@@ -5,12 +5,17 @@ import {
   FunctionReferenceSection,
   TypeReferenceSection,
 } from "./function-reference";
-import { MarkdownContent } from "./markdown-content";
+import { InlineMarkdown, MarkdownContent } from "./markdown-content";
 import type {
   Concept,
   ConceptFunction,
   ConceptType,
+  DocumentCollection,
+  FunctionField,
   KnowledgeDocument,
+  PlanSection,
+  ProjectPlanDocument,
+  ReaderDocument,
 } from "../lib/knowledge-file";
 
 const pendingEntryScrollStorageKey = "neenja-pending-entry-scroll";
@@ -43,16 +48,37 @@ function joinPath(basePath: string, pathname: string) {
   return `${normalizedBasePath}${pathname}`.replace(/\/{2,}/g, "/");
 }
 
-function getConceptHref(basePath: string, conceptId: string) {
-  return joinPath(basePath, `/${conceptId}/`);
+function getDocumentHref(basePath: string, documentSlug: string) {
+  return joinPath(basePath, `/${documentSlug}/`);
 }
 
-function getEntryHref(basePath: string, conceptId: string, entryId: string) {
-  return `${getConceptHref(basePath, conceptId)}#${entryId}`;
+function getDocumentEntryHref(basePath: string, documentSlug: string, entryId: string) {
+  return joinPath(basePath, `/${documentSlug}/${entryId}/`);
+}
+
+function getStructuredEntryHref(
+  basePath: string,
+  documentSlug: string,
+  conceptId: string,
+  entryId: string,
+) {
+  return `${getDocumentEntryHref(basePath, documentSlug, conceptId)}#${entryId}`;
 }
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
+}
+
+function isKnowledgeDocument(document: ReaderDocument): document is KnowledgeDocument {
+  return document.kind === "documentation";
+}
+
+function isProjectPlanDocument(document: ReaderDocument): document is ProjectPlanDocument {
+  return document.kind === "project-plan";
+}
+
+function getDocumentGroupKey(documentSlug: string, groupSlug: string) {
+  return `${documentSlug}:${groupSlug}`;
 }
 
 function conceptMatchesSearch(concept: Concept, query: string) {
@@ -128,6 +154,26 @@ function typeMatchesSearch(
   return haystack.includes(query);
 }
 
+function planSectionMatchesSearch(section: PlanSection, query: string) {
+  if (!query) {
+    return true;
+  }
+
+  const haystack = [
+    section.title,
+    section.area,
+    section.summary,
+    section.fields
+      .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
+      .join("\n"),
+    section.contentBlocks.map((block) => block.content).join("\n"),
+  ]
+    .join("\n")
+    .toLowerCase();
+
+  return haystack.includes(query);
+}
+
 type FunctionSearchResult = {
   concept: Concept;
   functionReference: ConceptFunction;
@@ -194,15 +240,66 @@ function ExpandableText({
   );
 }
 
+function PlanFieldValue({ field }: { field: FunctionField }) {
+  const hasMultilineValue = field.value.includes("\n");
+
+  return (
+    <>
+      {field.value ? (
+        hasMultilineValue ? (
+          <div className="plan-field-rich-text">
+            <MarkdownContent content={field.value} />
+          </div>
+        ) : (
+          <p className="plan-field-inline">
+            <InlineMarkdown content={field.value} />
+          </p>
+        )
+      ) : null}
+
+      {field.items.length > 0 ? (
+        <ul className="plan-field-list">
+          {field.items.map((item, index) => (
+            <li key={`${field.label}-${item}-${index}`}>
+              <InlineMarkdown content={item} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </>
+  );
+}
+
+function PlanFields({ fields }: { fields: FunctionField[] }) {
+  if (fields.length === 0) {
+    return null;
+  }
+
+  return (
+    <dl className="plan-fields">
+      {fields.map((field) => (
+        <div key={field.label} className="plan-field">
+          <dt>{field.label}</dt>
+          <dd>
+            <PlanFieldValue field={field} />
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function DocsShell({
-  document: knowledgeDocument,
-  selectedConceptId,
+  collection,
+  selectedDocumentSlug,
+  selectedEntryId,
   homeHref = "/",
   basePath = "/",
   brandIconSrc = "/brand/neenja.svg",
 }: {
-  document: KnowledgeDocument;
-  selectedConceptId?: string;
+  collection: DocumentCollection;
+  selectedDocumentSlug?: string;
+  selectedEntryId?: string;
   homeHref?: string;
   basePath?: string;
   brandIconSrc?: string;
@@ -215,59 +312,84 @@ export function DocsShell({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dismissEntryItemLinkOnUserScrollRef = useRef(false);
   const pointerScrollCandidateRef = useRef(false);
+  const activeDocument =
+    collection.documentsBySlug[selectedDocumentSlug ?? ""] ?? collection.defaultDocument;
   const selectedConcept =
-    knowledgeDocument.conceptsById[selectedConceptId ?? ""] ?? knowledgeDocument.concepts[0];
-  const visibleRelatedConcepts = selectedConcept
-    ? selectedConcept.related
-        .map((relatedId) => knowledgeDocument.conceptsById[relatedId])
-        .filter((relatedConcept): relatedConcept is Concept => Boolean(relatedConcept))
-    : [];
-  const selectedCategorySlug = selectedConcept?.categorySlug;
+    isKnowledgeDocument(activeDocument)
+      ? activeDocument.conceptsById[selectedEntryId ?? ""] ?? activeDocument.concepts[0]
+      : undefined;
+  const selectedPlanSection =
+    isProjectPlanDocument(activeDocument)
+      ? activeDocument.sectionsById[selectedEntryId ?? ""] ?? activeDocument.sections[0]
+      : undefined;
+  const visibleRelatedConcepts =
+    isKnowledgeDocument(activeDocument) && selectedConcept
+      ? selectedConcept.related
+          .map((relatedId) => activeDocument.conceptsById[relatedId])
+          .filter((relatedConcept): relatedConcept is Concept => Boolean(relatedConcept))
+      : [];
+  const selectedGroupSlug =
+    selectedConcept?.categorySlug ?? selectedPlanSection?.areaSlug;
   const query = normalize(search);
-  const conceptSearchResults = knowledgeDocument.concepts.filter((concept) =>
-    conceptMatchesSearch(concept, query),
-  );
-  const functionSearchResults: FunctionSearchResult[] = query
-    ? knowledgeDocument.concepts.flatMap((concept) =>
-        concept.functions
-          .filter((functionReference) => functionMatchesSearch(concept, functionReference, query))
-          .map((functionReference) => ({
-            concept,
-            functionReference,
-          })),
-      )
+  const documentationDocument = isKnowledgeDocument(activeDocument) ? activeDocument : undefined;
+  const projectPlanDocument = isProjectPlanDocument(activeDocument) ? activeDocument : undefined;
+  const conceptSearchResults = documentationDocument
+    ? documentationDocument.concepts.filter((concept) => conceptMatchesSearch(concept, query))
     : [];
-  const typeSearchResults: TypeSearchResult[] = query
-    ? knowledgeDocument.concepts.flatMap((concept) =>
-        concept.types
-          .filter((typeReference) => typeMatchesSearch(concept, typeReference, query))
-          .map((typeReference) => ({
-            concept,
-            typeReference,
-          })),
-      )
+  const functionSearchResults: FunctionSearchResult[] =
+    documentationDocument && query
+      ? documentationDocument.concepts.flatMap((concept) =>
+          concept.functions
+            .filter((functionReference) => functionMatchesSearch(concept, functionReference, query))
+            .map((functionReference) => ({
+              concept,
+              functionReference,
+            })),
+        )
+      : [];
+  const typeSearchResults: TypeSearchResult[] =
+    documentationDocument && query
+      ? documentationDocument.concepts.flatMap((concept) =>
+          concept.types
+            .filter((typeReference) => typeMatchesSearch(concept, typeReference, query))
+            .map((typeReference) => ({
+              concept,
+              typeReference,
+            })),
+        )
+      : [];
+  const planSearchResults = projectPlanDocument
+    ? projectPlanDocument.sections.filter((section) => planSectionMatchesSearch(section, query))
     : [];
-  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(
-      knowledgeDocument.categories.map((category) => [category.slug, category.slug === selectedCategorySlug]),
-    ),
-  );
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const groups = isKnowledgeDocument(activeDocument)
+      ? activeDocument.categories
+      : activeDocument.areas;
+
+    return Object.fromEntries(
+      groups.map((group) => [
+        getDocumentGroupKey(activeDocument.slug, group.slug),
+        group.slug === selectedGroupSlug,
+      ]),
+    );
+  });
 
   useEffect(() => {
-    if (!selectedCategorySlug) {
+    if (!selectedGroupSlug) {
       return;
     }
 
-    setOpenCategories((current) => ({
+    setOpenGroups((current) => ({
       ...current,
-      [selectedCategorySlug]: true,
+      [getDocumentGroupKey(activeDocument.slug, selectedGroupSlug)]: true,
     }));
-  }, [selectedCategorySlug]);
+  }, [activeDocument.slug, selectedGroupSlug]);
 
   useEffect(() => {
     setIsSidebarOpen(false);
     setIsSearchOpen(false);
-  }, [selectedConceptId]);
+    setSearch("");
+  }, [selectedDocumentSlug, selectedEntryId]);
 
   useEffect(() => {
     if (!isSearchOpen) {
@@ -463,7 +585,7 @@ export function DocsShell({
     setIsSearchOpen(false);
   };
 
-  const handleEntryNavigation = (
+  const handleStructuredEntryNavigation = (
     event: MouseEvent<HTMLAnchorElement>,
     conceptId: string,
     entryId: string,
@@ -474,8 +596,8 @@ export function DocsShell({
 
     event.preventDefault();
 
-    const conceptHref = getConceptHref(basePath, conceptId);
-    const entryHref = getEntryHref(basePath, conceptId, entryId);
+    const conceptHref = getDocumentEntryHref(basePath, activeDocument.slug, conceptId);
+    const entryHref = getStructuredEntryHref(basePath, activeDocument.slug, conceptId, entryId);
 
     setIsSidebarOpen(false);
     setIsSearchOpen(false);
@@ -511,6 +633,12 @@ export function DocsShell({
     window.location.assign(conceptHref);
   };
 
+  const hasSearchResults =
+    functionSearchResults.length > 0 ||
+    typeSearchResults.length > 0 ||
+    conceptSearchResults.length > 0 ||
+    planSearchResults.length > 0;
+
   return (
     <>
       <header className="site-header docs-header">
@@ -536,12 +664,30 @@ export function DocsShell({
                 <a href="https://github.com/MesonWarrior/Neenja">Neenja</a>
               </p>
               <a href={homeHref} className="brand-link">
-                {knowledgeDocument.meta.title}
+                {activeDocument.meta.title}
               </a>
             </div>
           </div>
 
           <div className="docs-header-right">
+            {collection.documents.length > 1 ? (
+              <nav className="document-nav" aria-label="Documents">
+                {collection.documents.map((document) => (
+                  <a
+                    key={document.slug}
+                    href={getDocumentHref(basePath, document.slug)}
+                    className={
+                      document.slug === activeDocument.slug
+                        ? "document-nav-link active"
+                        : "document-nav-link"
+                    }
+                  >
+                    {document.label}
+                  </a>
+                ))}
+              </nav>
+            ) : null}
+
             <button
               type="button"
               className="search-trigger desktop-search-trigger"
@@ -557,7 +703,7 @@ export function DocsShell({
               type="button"
               className="icon-button mobile-search-trigger"
               onClick={openSearch}
-              aria-label="Search concepts, functions, and types"
+              aria-label="Search current document"
               aria-haspopup="dialog"
               aria-expanded={isSearchOpen}
             >
@@ -577,128 +723,194 @@ export function DocsShell({
         <aside className={isSidebarOpen ? "sidebar open" : "sidebar"}>
           <section className="sidebar-panel hero-panel">
             <p className="eyebrow">Description</p>
-            <ExpandableText text={knowledgeDocument.meta.summary} className="hero-copy" />
-            <p className="updated">Updated: {knowledgeDocument.meta.updated}</p>
+            <ExpandableText text={activeDocument.meta.summary} className="hero-copy" />
+            <p className="updated">Updated: {activeDocument.meta.updated}</p>
           </section>
 
           <section className="concept-list-panel" aria-label="Navigation">
-            {knowledgeDocument.categories.map((category) => {
-              const isOpen = Boolean(openCategories[category.slug]);
+            {isKnowledgeDocument(activeDocument)
+              ? activeDocument.categories.map((category) => {
+                  const groupKey = getDocumentGroupKey(activeDocument.slug, category.slug);
+                  const isOpen = Boolean(openGroups[groupKey]);
 
-              return (
-                <div key={category.name} className="category-group">
-                  <button
-                    type="button"
-                    className="category-toggle"
-                    aria-expanded={isOpen}
-                    onClick={() =>
-                      setOpenCategories((current) => ({
-                        ...current,
-                        [category.slug]: !current[category.slug],
-                      }))
-                    }
-                  >
-                    <span className="category-toggle-content">
-                      <span className="category-heading-title">{category.name}</span>
-                    </span>
-                    <ChevronDown
-                      size={16}
-                      className={isOpen ? "category-toggle-icon open" : "category-toggle-icon"}
-                      aria-hidden="true"
-                    />
-                  </button>
+                  return (
+                    <div key={category.name} className="category-group">
+                      <button
+                        type="button"
+                        className="category-toggle"
+                        aria-expanded={isOpen}
+                        onClick={() =>
+                          setOpenGroups((current) => ({
+                            ...current,
+                            [groupKey]: !current[groupKey],
+                          }))
+                        }
+                      >
+                        <span className="category-toggle-content">
+                          <span className="category-heading-title">{category.name}</span>
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          className={isOpen ? "category-toggle-icon open" : "category-toggle-icon"}
+                          aria-hidden="true"
+                        />
+                      </button>
 
-                  {isOpen ? (
-                    category.concepts.length > 0 ? (
-                      <div className="concept-sublist" aria-label={`${category.name} concepts`}>
-                        {category.concepts.map((concept) => {
-                          const isConceptActive = selectedConcept?.id === concept.id;
-                          const isEntryConcept = concept.kind !== "concept";
-                          const entryList =
-                            concept.kind === "functions"
-                              ? concept.functions.map((functionReference) => ({
-                                  id: functionReference.id,
-                                  name: functionReference.name,
-                                }))
-                              : concept.kind === "types"
-                                ? concept.types.map((typeReference) => ({
-                                    id: typeReference.id,
-                                    name: typeReference.name,
-                                  }))
-                                : [];
+                      {isOpen ? (
+                        category.concepts.length > 0 ? (
+                          <div className="concept-sublist" aria-label={`${category.name} concepts`}>
+                            {category.concepts.map((concept) => {
+                              const isConceptActive = selectedConcept?.id === concept.id;
+                              const isEntryConcept = concept.kind !== "concept";
+                              const entryList =
+                                concept.kind === "functions"
+                                  ? concept.functions.map((functionReference) => ({
+                                      id: functionReference.id,
+                                      name: functionReference.name,
+                                    }))
+                                  : concept.kind === "types"
+                                    ? concept.types.map((typeReference) => ({
+                                        id: typeReference.id,
+                                        name: typeReference.name,
+                                      }))
+                                    : [];
 
-                          return (
-                            <div key={concept.id} className="concept-tree-item">
-                              <a
-                                href={getConceptHref(basePath, concept.id)}
-                                className={
-                                  isConceptActive
-                                    ? `concept-item-link active${isEntryConcept ? " special-concept-item-link" : ""}`
-                                    : `concept-item-link${isEntryConcept ? " special-concept-item-link" : ""}`
-                                }
-                                onClick={() => setIsSidebarOpen(false)}
-                              >
-                                <span className="concept-link-title-row">
-                                  <span className="concept-link-title">{concept.title}</span>
-                                  <span className="concept-link-meta">
-                                    {isEntryConcept ? (
-                                      <span className="concept-link-kind">{concept.kind}</span>
-                                    ) : null}
-                                    {concept.privacy === "private" ? (
-                                      <span
-                                        className="concept-link-private-indicator"
-                                        title="Private concept"
-                                        aria-label="Private concept"
-                                      >
-                                        <LockKeyhole size={12} aria-hidden="true" />
+                              return (
+                                <div key={concept.id} className="concept-tree-item">
+                                  <a
+                                    href={getDocumentEntryHref(basePath, activeDocument.slug, concept.id)}
+                                    className={
+                                      isConceptActive
+                                        ? `concept-item-link active${isEntryConcept ? " special-concept-item-link" : ""}`
+                                        : `concept-item-link${isEntryConcept ? " special-concept-item-link" : ""}`
+                                    }
+                                    onClick={() => setIsSidebarOpen(false)}
+                                  >
+                                    <span className="concept-link-title-row">
+                                      <span className="concept-link-title">{concept.title}</span>
+                                      <span className="concept-link-meta">
+                                        {isEntryConcept ? (
+                                          <span className="concept-link-kind">{concept.kind}</span>
+                                        ) : null}
+                                        {concept.privacy === "private" ? (
+                                          <span
+                                            className="concept-link-private-indicator"
+                                            title="Private concept"
+                                            aria-label="Private concept"
+                                          >
+                                            <LockKeyhole size={12} aria-hidden="true" />
+                                          </span>
+                                        ) : null}
                                       </span>
-                                    ) : null}
-                                  </span>
-                                </span>
-                              </a>
+                                    </span>
+                                  </a>
 
-                              {isConceptActive && entryList.length > 0 ? (
-                                <div
-                                  className="concept-entry-sublist"
-                                  aria-label={`${concept.title} ${concept.kind}`}
-                                >
-                                  {entryList.map((entry) => (
-                                    <a
-                                      key={entry.id}
-                                      href={getEntryHref(basePath, concept.id, entry.id)}
-                                      className={
-                                        activeEntryId === entry.id && !isEntryItemLinkActiveDismissed
-                                          ? "entry-item-link active"
-                                          : "entry-item-link"
-                                      }
-                                      onClick={(event) =>
-                                        handleEntryNavigation(event, concept.id, entry.id)
-                                      }
+                                  {isConceptActive && entryList.length > 0 ? (
+                                    <div
+                                      className="concept-entry-sublist"
+                                      aria-label={`${concept.title} ${concept.kind}`}
                                     >
-                                      <span className="entry-link-title">
-                                        <div className="entry-link-title-point" />
-                                        <code>{entry.name}</code>
-                                      </span>
-                                    </a>
-                                  ))}
+                                      {entryList.map((entry) => (
+                                        <a
+                                          key={entry.id}
+                                          href={getStructuredEntryHref(
+                                            basePath,
+                                            activeDocument.slug,
+                                            concept.id,
+                                            entry.id,
+                                          )}
+                                          className={
+                                            activeEntryId === entry.id && !isEntryItemLinkActiveDismissed
+                                              ? "entry-item-link active"
+                                              : "entry-item-link"
+                                          }
+                                          onClick={(event) =>
+                                            handleStructuredEntryNavigation(event, concept.id, entry.id)
+                                          }
+                                        >
+                                          <span className="entry-link-title">
+                                            <div className="entry-link-title-point" />
+                                            <code>{entry.name}</code>
+                                          </span>
+                                        </a>
+                                      ))}
+                                    </div>
+                                  ) : null}
                                 </div>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="concept-preview-empty">No concepts in this category yet.</p>
-                    )
-                  ) : null}
-                </div>
-              );
-            })}
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="concept-preview-empty">No concepts in this category yet.</p>
+                        )
+                      ) : null}
+                    </div>
+                  );
+                })
+              : null}
+
+            {isProjectPlanDocument(activeDocument)
+              ? activeDocument.areas.map((area) => {
+                  const groupKey = getDocumentGroupKey(activeDocument.slug, area.slug);
+                  const isOpen = Boolean(openGroups[groupKey]);
+
+                  return (
+                    <div key={area.name} className="category-group">
+                      <button
+                        type="button"
+                        className="category-toggle"
+                        aria-expanded={isOpen}
+                        onClick={() =>
+                          setOpenGroups((current) => ({
+                            ...current,
+                            [groupKey]: !current[groupKey],
+                          }))
+                        }
+                      >
+                        <span className="category-toggle-content">
+                          <span className="category-heading-title">{area.name}</span>
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          className={isOpen ? "category-toggle-icon open" : "category-toggle-icon"}
+                          aria-hidden="true"
+                        />
+                      </button>
+
+                      {isOpen ? (
+                        area.sections.length > 0 ? (
+                          <div className="concept-sublist" aria-label={`${area.name} plan sections`}>
+                            {area.sections.map((section) => (
+                              <div key={section.id} className="concept-tree-item">
+                                <a
+                                  href={getDocumentEntryHref(basePath, activeDocument.slug, section.id)}
+                                  className={
+                                    selectedPlanSection?.id === section.id
+                                      ? "concept-item-link active"
+                                      : "concept-item-link"
+                                  }
+                                  onClick={() => setIsSidebarOpen(false)}
+                                  >
+                                    <span className="concept-link-title-row">
+                                      <span className="concept-link-title">{section.title}</span>
+                                    </span>
+                                  </a>
+                                </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="concept-preview-empty">No plan sections in this area yet.</p>
+                        )
+                      ) : null}
+                    </div>
+                  );
+                })
+              : null}
           </section>
         </aside>
 
         <section className="reader">
-          {selectedConcept ? (
+          {selectedConcept && documentationDocument ? (
             <article className="reader-card">
               <header className="reader-header">
                 <p className="eyebrow">{selectedConcept.category}</p>
@@ -720,7 +932,10 @@ export function DocsShell({
                       {visibleRelatedConcepts.length > 0 ? (
                         <span className="related-links">
                           {visibleRelatedConcepts.map((relatedConcept) => (
-                            <a key={relatedConcept.id} href={getConceptHref(basePath, relatedConcept.id)}>
+                            <a
+                              key={relatedConcept.id}
+                              href={getDocumentEntryHref(basePath, activeDocument.slug, relatedConcept.id)}
+                            >
                               {relatedConcept.title}
                             </a>
                           ))}
@@ -745,9 +960,9 @@ export function DocsShell({
                   selectedConcept.functions.length > 0 ? (
                     <FunctionReferenceSection
                       functions={selectedConcept.functions}
-                      basePath={basePath}
-                      onEntryNavigate={handleEntryNavigation}
-                      typeIndex={knowledgeDocument.typeIndex}
+                      basePath={getDocumentHref(basePath, activeDocument.slug)}
+                      onEntryNavigate={handleStructuredEntryNavigation}
+                      typeIndex={documentationDocument.typeIndex}
                     />
                   ) : (
                     <p className="empty-state">No functions have been documented in this concept yet.</p>
@@ -758,9 +973,9 @@ export function DocsShell({
                   selectedConcept.types.length > 0 ? (
                     <TypeReferenceSection
                       types={selectedConcept.types}
-                      basePath={basePath}
-                      onEntryNavigate={handleEntryNavigation}
-                      typeIndex={knowledgeDocument.typeIndex}
+                      basePath={getDocumentHref(basePath, activeDocument.slug)}
+                      onEntryNavigate={handleStructuredEntryNavigation}
+                      typeIndex={documentationDocument.typeIndex}
                     />
                   ) : (
                     <p className="empty-state">No types have been documented in this concept yet.</p>
@@ -768,16 +983,39 @@ export function DocsShell({
                 ) : null}
               </div>
             </article>
-          ) : (
+          ) : null}
+
+          {selectedPlanSection && projectPlanDocument ? (
+            <article className="reader-card">
+              <header className="reader-header">
+                <p className="eyebrow">{selectedPlanSection.area}</p>
+                <h2>{selectedPlanSection.title}</h2>
+                <p className="reader-summary">{selectedPlanSection.summary}</p>
+
+                <PlanFields fields={selectedPlanSection.fields} />
+              </header>
+
+              <div className="reader-body">
+                {selectedPlanSection.contentBlocks.map((block, index) => (
+                  <MarkdownContent
+                    key={`${selectedPlanSection.id}-markdown-${index}`}
+                    content={block.content}
+                  />
+                ))}
+              </div>
+            </article>
+          ) : null}
+
+          {!selectedConcept && !selectedPlanSection ? (
             <section className="reader-card">
               <div className="reader-header">
-                <h2>No concepts available</h2>
+                <h2>No entries available</h2>
                 <p className="reader-summary">
-                  Add at least one `## Concept:` block to the knowledge file.
+                  Add at least one supported section to the active Neenja document.
                 </p>
               </div>
             </section>
-          )}
+          ) : null}
         </section>
       </div>
 
@@ -794,7 +1032,7 @@ export function DocsShell({
             className="search-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="Search concepts, functions, and types"
+            aria-label="Search current document"
           >
             <div className="search-dialog-header">
               <div className="search-dialog-input-shell">
@@ -805,7 +1043,7 @@ export function DocsShell({
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search concepts, functions, and types"
+                  placeholder={`Search ${activeDocument.label.toLowerCase()}`}
                 />
               </div>
 
@@ -819,10 +1057,8 @@ export function DocsShell({
               </button>
             </div>
 
-            <div className="search-dialog-results" aria-label="Matching concepts, functions, and types">
-              {functionSearchResults.length > 0 ||
-              typeSearchResults.length > 0 ||
-              conceptSearchResults.length > 0 ? (
+            <div className="search-dialog-results" aria-label="Matching entries">
+              {hasSearchResults ? (
                 <>
                   {functionSearchResults.length > 0 ? (
                     <section className="search-results-group" aria-label="Matching functions">
@@ -831,14 +1067,19 @@ export function DocsShell({
                       {functionSearchResults.map(({ concept, functionReference }) => (
                         <a
                           key={`${concept.id}-${functionReference.id}`}
-                          href={getEntryHref(basePath, concept.id, functionReference.id)}
+                          href={getStructuredEntryHref(
+                            basePath,
+                            activeDocument.slug,
+                            concept.id,
+                            functionReference.id,
+                          )}
                           className={
                             selectedConcept?.id === concept.id && activeEntryId === functionReference.id
                               ? "search-result-card active"
                               : "search-result-card"
                           }
                           onClick={(event) =>
-                            handleEntryNavigation(event, concept.id, functionReference.id)
+                            handleStructuredEntryNavigation(event, concept.id, functionReference.id)
                           }
                         >
                           <span className="search-result-eyebrow">{concept.category}</span>
@@ -863,14 +1104,19 @@ export function DocsShell({
                       {typeSearchResults.map(({ concept, typeReference }) => (
                         <a
                           key={`${concept.id}-${typeReference.id}`}
-                          href={getEntryHref(basePath, concept.id, typeReference.id)}
+                          href={getStructuredEntryHref(
+                            basePath,
+                            activeDocument.slug,
+                            concept.id,
+                            typeReference.id,
+                          )}
                           className={
                             selectedConcept?.id === concept.id && activeEntryId === typeReference.id
                               ? "search-result-card active"
                               : "search-result-card"
                           }
                           onClick={(event) =>
-                            handleEntryNavigation(event, concept.id, typeReference.id)
+                            handleStructuredEntryNavigation(event, concept.id, typeReference.id)
                           }
                         >
                           <span className="search-result-eyebrow">{concept.category}</span>
@@ -895,7 +1141,7 @@ export function DocsShell({
                       {conceptSearchResults.map((concept) => (
                         <a
                           key={concept.id}
-                          href={getConceptHref(basePath, concept.id)}
+                          href={getDocumentEntryHref(basePath, activeDocument.slug, concept.id)}
                           className={
                             selectedConcept?.id === concept.id
                               ? "search-result-card active"
@@ -912,9 +1158,34 @@ export function DocsShell({
                       ))}
                     </section>
                   ) : null}
+
+                  {planSearchResults.length > 0 ? (
+                    <section className="search-results-group" aria-label="Matching plan sections">
+                      {query ? <p className="search-results-heading">Project plan</p> : null}
+
+                      {planSearchResults.map((section) => (
+                        <a
+                          key={section.id}
+                          href={getDocumentEntryHref(basePath, activeDocument.slug, section.id)}
+                          className={
+                            selectedPlanSection?.id === section.id
+                              ? "search-result-card active"
+                              : "search-result-card"
+                          }
+                          onClick={closeSearch}
+                        >
+                          <span className="search-result-eyebrow">{section.area}</span>
+                          <strong className="search-result-title">{section.title}</strong>
+                          <span className="search-result-summary">
+                            {section.summary || "Open this plan section."}
+                          </span>
+                        </a>
+                      ))}
+                    </section>
+                  ) : null}
                 </>
               ) : (
-                <p className="empty-state">No concepts, functions, or types match this search yet.</p>
+                <p className="empty-state">No entries match this search yet.</p>
               )}
             </div>
           </section>

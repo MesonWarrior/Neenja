@@ -1,6 +1,6 @@
 # Neenja Docs Tool
 
-Neenja is a tool that allows you to automatically generate a project documentation file using any AI coding agent, with automatic updates whenever changes are made.
+Neenja is a tool that allows you to automatically generate project documentation and project plan using any AI coding agent, with automatic updates whenever changes are made.
 
 <img src="https://mesonwarrior.github.io/neenja-docs/neenja_image.png" alt="Neenja" style="width: 100%">
 
@@ -11,21 +11,25 @@ Neenja is a tool that allows you to automatically generate a project documentati
 
 ## How to use?
 1. Run `npx skills add MesonWarrior/Neenja --all`.
-2. Use `/neenja-bootstrap` once to inspect the repository and create
+2. Use `/neenja-plan-init` at the beginning of a project when you want an agent
+   to turn your detailed brief into `./.neenja/project-plan.md`.
+3. Use `/neenja-bootstrap` once to inspect the repository and create
    `./.neenja/documentation.md`. You can pass one optional single-line
    preferences string, and the agent should save it in frontmatter as
    `preferences:` directly under `summary:`.
-3. Run `npx neenja serve` to open the UI for the documentation file. By default it
-   shows the full docs set, including internal concepts.
-4. Run `npx neenja build` to generate a static reader bundle into
+4. Run `npx neenja serve` to open the UI for the `.neenja/` documents folder.
+   By default it shows the full docs set, including internal concepts.
+5. Run `npx neenja build` to generate a static reader bundle into
    `.neenja/build`. By default it builds only the public documentation subset.
 
-You can also point the UI and build commands to a custom file:
+You can also point the UI and build commands to a custom documents folder:
 
 ```bash
-npx neenja serve -f ./some/other/documentation.md
-npx neenja build -f ./some/other/documentation.md
+npx neenja serve --dir ./some/other/.neenja
+npx neenja build --dir ./some/other/.neenja
 ```
+
+The legacy `--file` flag still works for older single-file documentation setups.
 
 By default, `build` only builds public concepts, and `serve` shows both public and private ones, but you can change the display of private concepts using --public to --private:
 

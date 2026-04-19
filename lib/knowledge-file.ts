@@ -1,10 +1,14 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-export const defaultKnowledgeDocumentFileName = ".neenja/documentation.md";
+export const defaultDocumentsDirectoryName = ".neenja";
+export const documentationDocumentFileName = "documentation.md";
+export const projectPlanDocumentFileName = "project-plan.md";
+export const defaultKnowledgeDocumentFileName = `${defaultDocumentsDirectoryName}/${documentationDocumentFileName}`;
 export const legacyKnowledgeDocumentFileName = "neenja.knowledge.md";
 
 export type DocumentationVisibility = "public" | "private";
+export type DocumentKind = "documentation" | "project-plan";
 export type ConceptPrivacy = "public" | "private";
 export type ConceptKind = "concept" | "functions" | "types";
 
@@ -38,6 +42,15 @@ export type ConceptContentBlock = {
   content: string;
 };
 
+export type DocumentMeta = {
+  title: string;
+  project: string;
+  version: string;
+  updated: string;
+  summary: string;
+  preferences?: string;
+};
+
 export type Concept = {
   id: string;
   title: string;
@@ -54,7 +67,7 @@ export type Concept = {
   types: ConceptType[];
 };
 
-type CategoryGroup = {
+export type CategoryGroup = {
   name: string;
   slug: string;
   concepts: Concept[];
@@ -68,18 +81,58 @@ export type TypeReferenceTarget = {
 };
 
 export type KnowledgeDocument = {
-  meta: {
-    title: string;
-    project: string;
-    version: string;
-    updated: string;
-    summary: string;
-  };
+  kind: "documentation";
+  slug: "documentation";
+  label: string;
+  path: string;
+  meta: DocumentMeta;
   visibility: DocumentationVisibility;
   concepts: Concept[];
   categories: CategoryGroup[];
   conceptsById: Record<string, Concept>;
   typeIndex: Record<string, TypeReferenceTarget>;
+};
+
+export type PlanSection = {
+  id: string;
+  title: string;
+  area: string;
+  areaSlug: string;
+  summary: string;
+  fields: FunctionField[];
+  content: string;
+  contentBlocks: ConceptContentBlock[];
+};
+
+export type PlanAreaGroup = {
+  name: string;
+  slug: string;
+  sections: PlanSection[];
+};
+
+export type ProjectPlanDocument = {
+  kind: "project-plan";
+  slug: "project-plan";
+  label: string;
+  path: string;
+  meta: DocumentMeta;
+  sections: PlanSection[];
+  areas: PlanAreaGroup[];
+  sectionsById: Record<string, PlanSection>;
+};
+
+export type ReaderDocument = KnowledgeDocument | ProjectPlanDocument;
+
+export type DocumentCollection = {
+  visibility: DocumentationVisibility;
+  documents: ReaderDocument[];
+  documentsBySlug: Record<string, ReaderDocument>;
+  defaultDocument: ReaderDocument;
+};
+
+type RecognizedDocumentFile = {
+  kind: DocumentKind;
+  path: string;
 };
 
 export async function resolveKnowledgeDocumentPath(): Promise<string> {
@@ -100,6 +153,27 @@ export async function resolveKnowledgeDocumentPath(): Promise<string> {
   } catch {
     return path.join(projectRoot, legacyKnowledgeDocumentFileName);
   }
+}
+
+export async function resolveDocumentDirectoryPath(): Promise<string> {
+  const configuredDirectory =
+    process.env.NEENJA_DOCUMENTS_DIR ?? process.env.NEENJA_DOCUMENTS_PATH;
+
+  if (configuredDirectory) {
+    return path.resolve(configuredDirectory);
+  }
+
+  const configuredKnowledgePath = process.env.NEENJA_KNOWLEDGE_PATH;
+
+  if (configuredKnowledgePath) {
+    return path.dirname(path.resolve(configuredKnowledgePath));
+  }
+
+  const projectRoot = process.env.NEENJA_PROJECT_ROOT
+    ? path.resolve(process.env.NEENJA_PROJECT_ROOT)
+    : process.cwd();
+
+  return path.join(projectRoot, defaultDocumentsDirectoryName);
 }
 
 function parseFrontmatter(raw: string) {
@@ -138,7 +212,7 @@ function parseFrontmatter(raw: string) {
   return { meta, body };
 }
 
-function splitConceptBlocks(body: string) {
+function splitHeadingBlocks(body: string, pattern: RegExp) {
   const normalizedBody = body.replace(/\r\n/g, "\n");
   const lines = normalizedBody.split("\n");
   const blocks: string[] = [];
@@ -146,9 +220,9 @@ function splitConceptBlocks(body: string) {
   let isInCodeBlock = false;
 
   for (const line of lines) {
-    const isConceptStart = !isInCodeBlock && /^## Concept:\s+.+$/.test(line);
+    const isBlockStart = !isInCodeBlock && pattern.test(line);
 
-    if (isConceptStart) {
+    if (isBlockStart) {
       if (currentBlock.length > 0) {
         blocks.push(currentBlock.join("\n").trim());
       }
@@ -168,6 +242,14 @@ function splitConceptBlocks(body: string) {
   }
 
   return blocks;
+}
+
+function splitConceptBlocks(body: string) {
+  return splitHeadingBlocks(body, /^## Concept:\s+.+$/);
+}
+
+function splitPlanBlocks(body: string) {
+  return splitHeadingBlocks(body, /^## Plan:\s+.+$/);
 }
 
 function parseListValue(value: string) {
@@ -485,6 +567,20 @@ function parseConcept(block: string): Concept {
   };
 }
 
+function getDocumentMeta(
+  meta: Record<string, string>,
+  defaults: Pick<DocumentMeta, "title" | "summary">,
+): DocumentMeta {
+  return {
+    title: meta.title || defaults.title,
+    project: meta.project || "Unknown Project",
+    version: meta.version || "1",
+    updated: meta.updated || "Unknown",
+    summary: meta.summary || defaults.summary,
+    ...(meta.preferences ? { preferences: meta.preferences } : {}),
+  };
+}
+
 function orderCategoryConcepts(concepts: Concept[]) {
   return [
     ...concepts.filter((concept) => concept.kind === "concept"),
@@ -540,6 +636,227 @@ function resolveDocumentationVisibility(): DocumentationVisibility {
   return process.env.NODE_ENV === "production" ? "public" : "private";
 }
 
+function parseKnowledgeDocument(raw: string, documentPath: string): KnowledgeDocument {
+  const { meta, body } = parseFrontmatter(raw);
+  const parsedConcepts = splitConceptBlocks(body).map(parseConcept);
+  const visibility = resolveDocumentationVisibility();
+  const concepts =
+    visibility === "private"
+      ? parsedConcepts
+      : parsedConcepts.filter((concept) => concept.privacy === "public");
+  const conceptsById = Object.fromEntries(concepts.map((concept) => [concept.id, concept]));
+
+  return {
+    kind: "documentation",
+    slug: "documentation",
+    label: "Documentation",
+    path: documentPath,
+    meta: getDocumentMeta(meta, {
+      title: "Knowledge Base",
+      summary: "Project documentation.",
+    }),
+    visibility,
+    concepts,
+    categories: groupByCategory(concepts),
+    conceptsById,
+    typeIndex: buildTypeIndex(concepts),
+  };
+}
+
+function parsePlanSection(block: string): PlanSection {
+  const lines = block.split("\n");
+  const title = lines[0].replace(/^## Plan:\s+/, "").trim();
+  const fieldLines: string[] = [];
+  let bodyStartIndex = 1;
+
+  for (let index = 1; index < lines.length; index += 1) {
+    const line = lines[index];
+
+    if (line.trim() === "") {
+      bodyStartIndex = index + 1;
+      break;
+    }
+
+    fieldLines.push(line);
+    bodyStartIndex = index + 1;
+  }
+
+  const fields = parseReferenceFields(fieldLines);
+  const area = getFunctionFieldText(fields, "Area") || "Plan";
+  const content = lines.slice(bodyStartIndex).join("\n").trim();
+  const hiddenFieldLabels = new Set(["id", "area", "summary"]);
+
+  return {
+    id: getFunctionFieldText(fields, "ID") || slugify(title),
+    title,
+    area,
+    areaSlug: slugify(area),
+    summary: getFunctionFieldText(fields, "Summary"),
+    fields: fields.filter((field) => !hiddenFieldLabels.has(normalizeFieldLabel(field.label))),
+    content,
+    contentBlocks: parseMarkdownBlocks(content),
+  };
+}
+
+function groupPlanSectionsByArea(sections: PlanSection[]) {
+  const groups = new Map<string, PlanSection[]>();
+
+  for (const section of sections) {
+    const existing = groups.get(section.area) ?? [];
+    existing.push(section);
+    groups.set(section.area, existing);
+  }
+
+  return [...groups.entries()].map(([name, areaSections]) => ({
+    name,
+    slug: slugify(name),
+    sections: areaSections,
+  }));
+}
+
+function parseProjectPlanDocument(raw: string, documentPath: string): ProjectPlanDocument {
+  const { meta, body } = parseFrontmatter(raw);
+  const sections = splitPlanBlocks(body).map(parsePlanSection);
+  const sectionsById = Object.fromEntries(sections.map((section) => [section.id, section]));
+
+  return {
+    kind: "project-plan",
+    slug: "project-plan",
+    label: "Project plan",
+    path: documentPath,
+    meta: getDocumentMeta(meta, {
+      title: "Project Plan",
+      summary: "Structured project plan.",
+    }),
+    sections,
+    areas: groupPlanSectionsByArea(sections),
+    sectionsById,
+  };
+}
+
+async function pathExists(targetPath: string) {
+  try {
+    await fs.access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getDocumentKindByFileName(fileName: string): DocumentKind | undefined {
+  if (fileName === documentationDocumentFileName) {
+    return "documentation";
+  }
+
+  if (fileName === projectPlanDocumentFileName) {
+    return "project-plan";
+  }
+
+  return undefined;
+}
+
+async function resolveRecognizedDocumentFiles(): Promise<RecognizedDocumentFile[]> {
+  const configuredKnowledgePath = process.env.NEENJA_KNOWLEDGE_PATH
+    ? path.resolve(process.env.NEENJA_KNOWLEDGE_PATH)
+    : undefined;
+
+  if (configuredKnowledgePath) {
+    return [
+      {
+        kind: "documentation",
+        path: configuredKnowledgePath,
+      },
+    ];
+  }
+
+  const documentsDirectoryPath = await resolveDocumentDirectoryPath();
+  const projectRoot = process.env.NEENJA_PROJECT_ROOT
+    ? path.resolve(process.env.NEENJA_PROJECT_ROOT)
+    : process.cwd();
+  const defaultDocumentsDirectoryPath = path.join(projectRoot, defaultDocumentsDirectoryName);
+  const legacyPath = path.join(projectRoot, legacyKnowledgeDocumentFileName);
+  const files: RecognizedDocumentFile[] = [];
+
+  try {
+    const entries = await fs.readdir(documentsDirectoryPath, {
+      withFileTypes: true,
+    });
+
+    for (const entry of entries) {
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      const kind = getDocumentKindByFileName(entry.name);
+
+      if (!kind) {
+        continue;
+      }
+
+      files.push({
+        kind,
+        path: path.join(documentsDirectoryPath, entry.name),
+      });
+    }
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !("code" in error) ||
+      error.code !== "ENOENT"
+    ) {
+      throw error;
+    }
+  }
+
+  const shouldTryLegacyFallback =
+    path.resolve(documentsDirectoryPath) === path.resolve(defaultDocumentsDirectoryPath);
+
+  if (
+    shouldTryLegacyFallback &&
+    !files.some((file) => file.kind === "documentation") &&
+    await pathExists(legacyPath)
+  ) {
+    files.push({
+      kind: "documentation",
+      path: legacyPath,
+    });
+  }
+
+  files.sort((left, right) => {
+    const order: Record<DocumentKind, number> = {
+      documentation: 0,
+      "project-plan": 1,
+    };
+
+    return order[left.kind] - order[right.kind];
+  });
+
+  if (files.length === 0) {
+    throw new Error(
+      [
+        "No Neenja documents were found.",
+        "",
+        "Checked paths:",
+        `- ${path.join(documentsDirectoryPath, documentationDocumentFileName)}`,
+        `- ${path.join(documentsDirectoryPath, projectPlanDocumentFileName)}`,
+        `- ${legacyPath}`,
+      ].join("\n"),
+    );
+  }
+
+  return files;
+}
+
+async function readRecognizedDocument(file: RecognizedDocumentFile): Promise<ReaderDocument> {
+  const raw = await fs.readFile(file.path, "utf8");
+
+  if (file.kind === "project-plan") {
+    return parseProjectPlanDocument(raw, file.path);
+  }
+
+  return parseKnowledgeDocument(raw, file.path);
+}
+
 export async function readKnowledgeDocumentRaw() {
   const knowledgeDocumentPath = await resolveKnowledgeDocumentPath();
 
@@ -560,27 +877,25 @@ export async function readKnowledgeDocumentRaw() {
 
 export async function readKnowledgeDocument(): Promise<KnowledgeDocument> {
   const raw = await readKnowledgeDocumentRaw();
-  const { meta, body } = parseFrontmatter(raw);
-  const parsedConcepts = splitConceptBlocks(body).map(parseConcept);
-  const visibility = resolveDocumentationVisibility();
-  const concepts =
-    visibility === "private"
-      ? parsedConcepts
-      : parsedConcepts.filter((concept) => concept.privacy === "public");
-  const conceptsById = Object.fromEntries(concepts.map((concept) => [concept.id, concept]));
+  const documentPath = await resolveKnowledgeDocumentPath();
+
+  return parseKnowledgeDocument(raw, documentPath);
+}
+
+export async function readDocumentCollection(): Promise<DocumentCollection> {
+  const documents = await Promise.all(
+    (await resolveRecognizedDocumentFiles()).map(readRecognizedDocument),
+  );
+  const documentsBySlug = Object.fromEntries(
+    documents.map((document) => [document.slug, document]),
+  ) as Record<string, ReaderDocument>;
+  const defaultDocument =
+    documentsBySlug.documentation ?? documentsBySlug["project-plan"] ?? documents[0];
 
   return {
-    meta: {
-      title: meta.title || "Knowledge Base",
-      project: meta.project || "Unknown Project",
-      version: meta.version || "1",
-      updated: meta.updated || "Unknown",
-      summary: meta.summary || "Single-file project knowledge base.",
-    },
-    visibility,
-    concepts,
-    categories: groupByCategory(concepts),
-    conceptsById,
-    typeIndex: buildTypeIndex(concepts),
+    visibility: resolveDocumentationVisibility(),
+    documents,
+    documentsBySlug,
+    defaultDocument,
   };
 }

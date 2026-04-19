@@ -2,14 +2,14 @@
 title: Neenja Documentation
 project: Neenja
 version: 1
-updated: 2026-04-18
-summary: Neenja keeps one AI-friendly project knowledge file current and renders it as a browsable documentation site.
+updated: 2026-04-19
+summary: Neenja keeps AI-friendly project documents current and renders documentation plus project plans as a browsable reader.
 ---
 
 # Neenja Documentation
 
-Neenja stores project knowledge in one Markdown file and turns that file into a
-reader UI that humans and coding agents can both use.
+Neenja stores canonical project memory in Markdown files under `.neenja/` and
+turns those files into a reader UI for humans and coding agents.
 
 ## Concept: Platform Overview
 ID: platform-overview
@@ -17,37 +17,46 @@ Privacy: public
 Type: concept
 Category: Product
 Tags: product, overview, workflow
-Summary: Neenja keeps one canonical knowledge file in sync with a project and renders it as a readable documentation site.
+Summary: Neenja reads a `.neenja/` documents folder and renders recognized Markdown documents as a local or static project knowledge site.
 Related: knowledge-file-format, prompt-workflow, cli-reference
 
 ### What it is
 Neenja combines three things:
 
-- one canonical `.neenja/documentation.md` file
-- agent skills that tell agents how to create and maintain that file
-- a reader UI that parses the file and exposes it as searchable documentation
+- a `.neenja/` document folder
+- agent skills that create and maintain project documents
+- a reader UI that parses recognized Markdown files and exposes them as
+  navigable project knowledge
+
+The reader currently recognizes these document filenames:
+
+- `.neenja/documentation.md` for concept documentation
+- `.neenja/project-plan.md` for a structured project plan
+
+The document type is determined by filename. Unknown Markdown files in the
+folder are ignored by the reader.
 
 ### Typical usage
 1. Run `npx skills add MesonWarrior/Neenja --all`.
-2. Use `/neenja-bootstrap` once so an agent can generate the first
-   `.neenja/documentation.md`.
-3. Optionally pass `/neenja-bootstrap` one single-line user preferences string
-   so it gets saved in the knowledge file frontmatter as `preferences:`.
+2. Use `/neenja-plan-init` at the start of a project when the user gives the
+   product brief and wants a structured plan candidate for review.
+3. Use `/neenja-bootstrap` once so an agent can generate
+   `.neenja/documentation.md` from the actual repository.
 4. Run `neenja serve` while working locally.
-5. Run `neenja build` when you need a static docs bundle.
+5. Run `neenja build` when you need a static reader bundle.
 
 After the skills are installed, `neenja-sync` should be applied by the model
-automatically on later tasks so the documentation stays current.
-
-If `.neenja/documentation.md` is missing, the CLI still falls back to the
-legacy root file `./neenja.knowledge.md` for `serve` and `build`.
+automatically on later tasks so documentation stays current.
 
 ### Rendering model
-- `serve` shows the whole documentation set by default, including internal
-  concepts.
-- `build` emits only the public subset by default, unless `--private` is passed
-  explicitly.
-- The sidebar marks private concepts with a dedicated icon.
+- `serve` reads `.neenja/` by default and shows the full documentation set,
+  including private documentation concepts.
+- `build` reads the same folder and emits only public documentation concepts by
+  default, unless `--private` is passed.
+- Project plan documents are not privacy-filtered; every `## Plan:` section in
+  the plan file is rendered.
+- The header navbar switches between recognized document types.
+- The sidebar switches to the active document's own navigation model.
 
 ## Concept: Knowledge File Format
 ID: knowledge-file-format
@@ -55,13 +64,28 @@ Privacy: public
 Type: concept
 Category: Authoring
 Tags: format, markdown, schema, authoring
-Summary: The canonical knowledge file uses frontmatter plus typed concepts that can store prose, callable references, or structural type references.
+Summary: Neenja uses filename-based Markdown document schemas for documentation and project plans inside `.neenja/`.
 Related: platform-overview, prompt-workflow, knowledge-model-types
 
-### Required structure
-The canonical documentation file lives at `./.neenja/documentation.md`.
+### Documents folder
+The canonical document folder is:
 
-Every documentation file starts with frontmatter:
+```txt
+./.neenja/
+```
+
+The reader recognizes document type by filename:
+
+```txt
+.neenja/documentation.md
+.neenja/project-plan.md
+```
+
+If `.neenja/documentation.md` is missing, Neenja can still fall back to the
+legacy root file `./neenja.knowledge.md` for documentation.
+
+### Documentation file
+The documentation file starts with frontmatter:
 
 ```txt
 ---
@@ -75,9 +99,10 @@ preferences: <optional single-line user documentation preferences>
 ```
 
 If `preferences:` is present, it stores one line of user guidance for Neenja's
-agent skills. The reader UI does not render that field.
+documentation skills. The reader keeps it in metadata but does not render it in
+the main document body.
 
-After that, the file contains one or more concept blocks:
+After frontmatter, documentation uses concept blocks:
 
 ```txt
 ## Concept: <Human Title>
@@ -90,54 +115,49 @@ Summary: <one sentence summary>
 Related: concept-id-one, concept-id-two
 ```
 
-### Concept types
+### Documentation concept types
 - `Type: concept` stores regular Markdown explanations, workflows, and notes.
 - `Type: functions` stores important callable surfaces with repeatable
   `#### Function:` blocks.
 - `Type: types` stores important project structures with repeatable
   `#### Type:` blocks.
 
-`### Functions` sections are not part of the schema. Functions and types live in
-dedicated concepts.
-
-### Structured reference blocks
-Functions concept bodies start with optional intro Markdown and then repeat this
-block:
+### Project plan file
+The project plan file starts with frontmatter:
 
 ```txt
-#### Function: `neenja serve`
-Kind: cli command
-Signature: `neenja serve [--file <path>] [--private | --public]`
-Description: Start the reader UI for the canonical knowledge file.
-Parameters:
-- --file <path>: string - Explicit path to the knowledge file.
+---
+title: <project name> Project Plan
+project: <project name>
+version: 1
+updated: <YYYY-MM-DD>
+summary: <one sentence project intent>
+preferences: <optional single-line user project preferences>
+---
 ```
 
-Types concept bodies start with optional intro Markdown and then repeat this
-block:
+`preferences:` is optional. It stores stable user preferences that apply to the
+project, such as product taste, technical constraints, exclusions, or preferred
+decision style.
+
+After frontmatter, the plan uses `## Plan:` blocks:
 
 ```txt
-#### Type: `KnowledgeDocument`
-Kind: object
-Description: Parsed documentation payload exposed to the reader UI.
-Fields:
-- concepts: `Concept[]` - Visible concepts after privacy filtering.
+## Plan: <Human Section Title>
+ID: <stable-machine-id>
+Area: <Project|Goal|Audience|Scope|Delivery|Risks|Decisions>
+Summary: <one sentence section summary>
+<Additional Field>: <structured value>
+<List Field>:
+- <item>
+- <item>
+
+<Markdown body with useful detail.>
 ```
 
-`Definition` is optional. It should contain a real structural shape or alias
-when that adds value, and it should be omitted when `Fields` already explain a
-large object clearly enough. Writing only the type name in `Definition` is not
-useful.
-
-### Visibility metadata
-- `Privacy: public` is for information that should ship to consumers,
-  integrators, and developers who use the project without editing its internals.
-- `Privacy: private` is for implementation details, exact file names, internal
-  helper behavior, maintainer guidance, and agent-only context.
-
-Visibility is authoring metadata. It controls filtering, but it is not rendered
-inside the main document body. The sidebar only marks concepts that are
-private.
+The required section fields are `ID`, `Area`, and `Summary`. Any additional
+fields are rendered as structured plan details. After user approval, the plan
+is treated as finalized project intent.
 
 ### Type links
 When a function signature or the type part of a `Parameters` or `Fields` list
@@ -150,7 +170,7 @@ Privacy: public
 Type: concept
 Category: Authoring
 Tags: skills, ai, maintenance, workflow
-Summary: Neenja uses `/neenja-bootstrap` for initial generation and `neenja-sync` for ongoing documentation maintenance, while the CLI keeps a legacy fallback for root-level `neenja.knowledge.md`.
+Summary: Neenja uses separate skills for initial planning, documentation bootstrapping, and ongoing documentation maintenance.
 Related: platform-overview, knowledge-file-format, internal-runtime-functions
 
 ### Installing the skills
@@ -160,33 +180,36 @@ Install the Neenja skills with:
 npx skills add MesonWarrior/Neenja --all
 ```
 
-This installs the `neenja-bootstrap` and `neenja-sync` skills for the agent.
+### `neenja-plan-init`
+`/neenja-plan-init` is the project planning skill. Use it at the start of a
+project after the user describes what they want to build.
+
+The skill writes `.neenja/project-plan.md` in the structured `## Plan:` format.
+It may store one optional single-line preferences value in the plan
+frontmatter. After writing the file, the skill asks the user to review what
+must be corrected before the plan is treated as final.
 
 ### `neenja-bootstrap`
-`/neenja-bootstrap` is the one-time generation skill. It tells the agent to
-inspect the repository, classify each concept by visibility and type, and write
-or refresh `.neenja/documentation.md`.
+`/neenja-bootstrap` is the one-time documentation generation skill. It tells the
+agent to inspect the repository, classify each concept by visibility and type,
+and write or refresh `.neenja/documentation.md`.
 
-The `neenja-bootstrap` skill accepts one optional single-line preferences
-argument. When present, the agent writes that value into the knowledge file
-frontmatter as
-`preferences:` directly under `summary:`.
+The skill accepts one optional single-line preferences argument. When present,
+the agent writes that value into documentation frontmatter as `preferences:`.
 
 ### `neenja-sync`
 `neenja-sync` is the ongoing maintenance skill. It tells working agents to read
 `.neenja/documentation.md` at the start of each task and update it before
 finishing when documentable behavior changed.
 
-The `neenja-sync` skill reads the saved `preferences:` frontmatter value when it exists
-and uses that guidance while changing documentation. It does not rely on a
-separate user-editable prompt block, and it should be applied by the model
-automatically on later tasks.
+The sync skill reads the saved documentation `preferences:` frontmatter value
+when it exists and uses that guidance while changing documentation.
 
 ### Maintenance rules
-- keep all canonical project documentation in `.neenja/documentation.md`
-- preserve stable concept IDs
-- update the frontmatter `updated` field whenever the file changes
-- prefer editing existing concepts over creating near-duplicates
+- keep canonical Neenja documents inside `.neenja/`
+- preserve stable concept IDs and plan section IDs
+- update the relevant frontmatter `updated` field whenever a document changes
+- prefer editing existing concepts or plan sections over creating duplicates
 - keep public concepts usable as external-facing reference material
 - keep private concepts implementation-grounded and useful to maintainers and
   agents
@@ -197,48 +220,53 @@ Privacy: public
 Type: functions
 Category: Product
 Tags: cli, commands, workflow
-Summary: The Neenja CLI serves or builds the documentation reader from one canonical knowledge file inside `.neenja`, with a legacy fallback to root `neenja.knowledge.md`.
+Summary: The Neenja CLI serves or builds the reader from a documents folder, with legacy support for a single documentation file.
 Related: platform-overview, knowledge-file-format
 
 The CLI is the main external interface for working with Neenja as a tool.
 
 #### Function: `neenja serve`
 Kind: cli command
-Signature: `neenja serve [--file <path>] [--private | --public]`
-Description: Start the local reader UI against the canonical knowledge file.
+Signature: `neenja serve [--dir <path>] [--file <path>] [--private | --public]`
+Description: Start the local reader UI against a Neenja documents folder.
 Parameters:
-- `--file <path>`: `string` - Explicit path to the knowledge file.
-- `--private`: `boolean` - Include private concepts in the rendered docs.
-- `--public`: `boolean` - Restrict the rendered docs to public concepts only.
+- `--dir <path>`: `string` - Explicit path to a Neenja documents folder.
+- `--file <path>`: `string` - Legacy path to one documentation file.
+- `--private`: `boolean` - Include private concepts in rendered documentation.
+- `--public`: `boolean` - Restrict rendered documentation concepts to public concepts only.
 Behavior:
-- Resolves `.neenja/documentation.md` by default.
-- Falls back to `./neenja.knowledge.md` when the new canonical path is missing.
+- Resolves `.neenja/` by default.
+- Recognizes `documentation.md` and `project-plan.md` by filename.
+- Falls back to `./neenja.knowledge.md` when no folder documentation file exists.
 - Launches Astro in dev mode.
 - Defaults to showing the full documentation set, including private concepts.
 
 #### Function: `neenja build`
 Kind: cli command
-Signature: `neenja build [--file <path>] [--private | --public]`
+Signature: `neenja build [--dir <path>] [--file <path>] [--private | --public]`
 Description: Build the reader as a static site in `.neenja/build`.
 Parameters:
-- `--file <path>`: `string` - Explicit path to the knowledge file.
+- `--dir <path>`: `string` - Explicit path to a Neenja documents folder.
+- `--file <path>`: `string` - Legacy path to one documentation file.
 - `--private`: `boolean` - Build the full documentation set, including private concepts.
 - `--public`: `boolean` - Build only the public documentation subset.
 Behavior:
 - Uses the same parser and renderer as `serve`.
-- Resolves `.neenja/documentation.md` by default.
-- Falls back to `./neenja.knowledge.md` when the new canonical path is missing.
-- Defaults to the public subset so generated static docs can be published safely.
+- Resolves `.neenja/` by default.
+- Defaults to the public documentation subset so generated static docs can be published safely.
+- Includes project plan routes whenever `.neenja/project-plan.md` exists.
 
 #### Function: `neenja build-github`
 Kind: cli command
-Signature: `neenja build-github --domain <url> --page <path> [--private | --public]`
+Signature: `neenja build-github --domain <url> --page <path> [--dir <path>] [--file <path>] [--private | --public]`
 Description: Build the reader for GitHub Pages with explicit site and base-path values.
 Parameters:
 - `--domain <url>`: `string` - Site origin for the generated build.
 - `--page <path>`: `string` - Base path under that origin.
+- `--dir <path>`: `string` - Explicit path to a Neenja documents folder.
+- `--file <path>`: `string` - Legacy path to one documentation file.
 - `--private`: `boolean` - Include private concepts in the build.
-- `--public`: `boolean` - Restrict the build to the public subset.
+- `--public`: `boolean` - Restrict the build to the public documentation subset.
 
 ## Concept: Knowledge Model Types
 ID: knowledge-model-types
@@ -246,80 +274,50 @@ Privacy: public
 Type: types
 Category: Authoring
 Tags: types, schema, model, renderer
-Summary: Neenja parses the knowledge file into a typed in-memory model that powers filtering, navigation, search, and cross-links.
+Summary: Neenja parses recognized Markdown files into a typed document collection that powers routing, navigation, search, and rendering.
 Related: knowledge-file-format, internal-runtime-functions
 
 These are the main structured values used by the parser and reader.
 
 #### Type: `DocumentMeta`
 Kind: object
-Definition: `{ title: string; project: string; version: string; updated: string; summary: string }`
-Description: Frontmatter metadata exposed by the reader UI.
+Definition: `{ title: string; project: string; version: string; updated: string; summary: string; preferences?: string }`
+Description: Frontmatter metadata exposed by every reader document.
 Fields:
 - title: `string` - Rendered document title.
 - project: `string` - Project name from frontmatter.
 - version: `string` - Schema version marker stored in the file.
-- updated: `string` - Last canonical documentation update date.
+- updated: `string` - Last canonical document update date.
 - summary: `string` - Short description shown in the reader shell.
+- preferences: `string | undefined` - Optional single-line user preferences stored by skills.
+
+#### Type: `DocumentKind`
+Kind: union
+Definition: `"documentation" | "project-plan"`
+Description: Filename-derived document type used by the reader.
 
 #### Type: `DocumentationVisibility`
 Kind: union
 Definition: `"public" | "private"`
-Description: Active visibility mode used for the current run.
-
-#### Type: `ConceptPrivacy`
-Kind: union
-Definition: `"public" | "private"`
-Description: Visibility assigned to one concept in the canonical file.
+Description: Active visibility mode used for documentation concepts.
 
 #### Type: `ConceptKind`
 Kind: union
 Definition: `"concept" | "functions" | "types"`
-Description: Renderer mode for a concept body.
-
-#### Type: `ConceptContentBlock`
-Kind: object
-Definition: `{ type: "markdown"; content: string }`
-Description: Markdown block rendered before structured function or type entries.
-Fields:
-- type: `"markdown"` - Block discriminator.
-- content: `string` - Markdown content ready for the reader body.
+Description: Renderer mode for a documentation concept body.
 
 #### Type: `FunctionField`
 Kind: object
 Definition: `{ label: string; value: string; items: string[] }`
-Description: Structured field captured from a function or type reference block.
+Description: Structured field captured from function, type, or project-plan blocks.
 Fields:
-- label: `string` - Original field name such as `Parameters` or `Fields`.
+- label: `string` - Original field name such as `Parameters`, `Fields`, or `Success Criteria`.
 - value: `string` - Inline text stored on the same line as the field label.
 - items: `string[]` - List items collected under that field.
 
-#### Type: `ConceptFunction`
-Kind: object
-Description: Structured function entry parsed from a `Type: functions` concept.
-Fields:
-- id: `string` - Stable anchor ID generated for the function card.
-- name: `string` - Display name taken from the `#### Function:` heading.
-- kind: `string` - Callable classification such as function, endpoint, or cli command.
-- signature: `string` - Signature or route shape shown in the card header.
-- description: `string` - Short explanation of behavior.
-- parameters: `string[]` - Flattened parameter lines for search and quick access.
-- fields: `FunctionField[]` - All structured fields captured from the block.
-
-#### Type: `ConceptType`
-Kind: object
-Description: Structured type entry parsed from a `Type: types` concept.
-Fields:
-- id: `string` - Stable anchor ID generated for the type card.
-- name: `string` - Display name taken from the `#### Type:` heading.
-- kind: `string` - Type classification such as object, union, or schema.
-- definition: `string` - Compact type shape or alias description.
-- description: `string` - Short explanation of what the type represents.
-- fields: `FunctionField[]` - All structured fields captured from the block.
-
 #### Type: `Concept`
 Kind: object
-Description: Parsed concept with metadata, Markdown content, and optional structured entries.
+Description: Parsed documentation concept with metadata, Markdown content, and optional structured entries.
 Fields:
 - id: `string` - Stable machine-readable concept ID.
 - title: `string` - Human-readable concept title.
@@ -330,34 +328,29 @@ Fields:
 - tags: `string[]` - Searchable tag list.
 - summary: `string` - Short description used in cards and search.
 - related: `string[]` - Related concept IDs.
-- content: `string` - Raw concept body.
 - contentBlocks: `ConceptContentBlock[]` - Markdown content rendered before structured entries.
 - functions: `ConceptFunction[]` - Function entries owned by the concept.
 - types: `ConceptType[]` - Type entries owned by the concept.
 
-#### Type: `CategoryGroup`
+#### Type: `PlanSection`
 Kind: object
-Definition: `{ name: string; slug: string; concepts: Concept[] }`
-Description: Sidebar navigation group with concepts already ordered for display.
+Description: Parsed `## Plan:` section from `.neenja/project-plan.md`.
 Fields:
-- name: `string` - Visible category label.
-- slug: `string` - Normalized category key.
-- concepts: `Concept[]` - Visible concepts in sidebar order.
-
-#### Type: `TypeReferenceTarget`
-Kind: object
-Definition: `{ conceptId: string; conceptTitle: string; id: string; name: string }`
-Description: Link target for turning type names into documentation anchors.
-Fields:
-- conceptId: `string` - Owning concept ID.
-- conceptTitle: `string` - Owning concept title.
-- id: `string` - Type entry anchor ID.
-- name: `string` - Documented type name.
+- id: `string` - Stable machine-readable section ID.
+- title: `string` - Human-readable section title.
+- area: `string` - Sidebar group such as `Project`, `Goal`, `Scope`, or `Delivery`.
+- areaSlug: `string` - Normalized area key used by the UI.
+- summary: `string` - Short section summary.
+- fields: `FunctionField[]` - Additional structured plan fields.
+- contentBlocks: `ConceptContentBlock[]` - Markdown body content.
 
 #### Type: `KnowledgeDocument`
 Kind: object
 Description: Parsed documentation payload consumed by the reader shell.
 Fields:
+- kind: `"documentation"` - Document discriminator.
+- slug: `"documentation"` - Route segment for documentation pages.
+- label: `string` - Navbar label.
 - meta: `DocumentMeta` - Frontmatter metadata.
 - visibility: `DocumentationVisibility` - Active visibility mode for this run.
 - concepts: `Concept[]` - Visible concepts after privacy filtering.
@@ -365,31 +358,59 @@ Fields:
 - conceptsById: `Record<string, Concept>` - Visible concepts keyed by ID.
 - typeIndex: `Record<string, TypeReferenceTarget>` - Lookup table for inline type links.
 
+#### Type: `ProjectPlanDocument`
+Kind: object
+Description: Parsed project plan payload consumed by the reader shell.
+Fields:
+- kind: `"project-plan"` - Document discriminator.
+- slug: `"project-plan"` - Route segment for project plan pages.
+- label: `string` - Navbar label.
+- meta: `DocumentMeta` - Frontmatter metadata.
+- sections: `PlanSection[]` - Parsed plan sections.
+- areas: `PlanAreaGroup[]` - Sections grouped for sidebar navigation.
+- sectionsById: `Record<string, PlanSection>` - Plan sections keyed by ID.
+
+#### Type: `DocumentCollection`
+Kind: object
+Description: Full set of recognized documents loaded from a Neenja documents folder.
+Fields:
+- visibility: `DocumentationVisibility` - Active documentation visibility mode.
+- documents: `ReaderDocument[]` - Recognized documents in navbar order.
+- documentsBySlug: `Record<string, ReaderDocument>` - Documents keyed by route slug.
+- defaultDocument: `ReaderDocument` - Document rendered at the root route.
+
 ## Concept: Parser Pipeline
 ID: parser-pipeline
 Privacy: private
 Type: concept
 Category: Internal
 Tags: parser, filtering, architecture
-Summary: The parser reads one Markdown file, extracts typed concepts, filters them by visibility, and prepares the reader data model.
+Summary: The parser reads a documents folder, recognizes document type by filename, and builds the reader document collection.
 Related: knowledge-file-format, knowledge-model-types, internal-runtime-functions
 
 ### Main flow
 The parser lives in `lib/knowledge-file.ts`. It:
 
-1. resolves the canonical file path from `NEENJA_KNOWLEDGE_PATH` or the project
-   `.neenja/documentation.md` location under the project root
-2. reads the raw Markdown file from disk
-3. parses frontmatter and splits the body into `## Concept:` blocks
-4. converts each concept into a typed in-memory record
-5. filters private concepts out when the active visibility mode is `public`
-6. groups visible concepts by category and builds a type lookup index
+1. resolves the documents folder from `NEENJA_DOCUMENTS_DIR` or
+   `NEENJA_DOCUMENTS_PATH`, otherwise `${projectRoot}/.neenja`
+2. scans the folder for recognized filenames
+3. parses `documentation.md` with the concept parser
+4. parses `project-plan.md` with the plan-section parser
+5. applies public/private filtering only to documentation concepts
+6. groups documentation concepts by category and plan sections by area
+7. builds a `DocumentCollection` for routing, navbar switching, search, and
+   rendering
+
+### Legacy path
+`NEENJA_KNOWLEDGE_PATH` and CLI `--file` are still supported for a single
+legacy documentation file. When used, the reader builds a one-document
+collection with only the documentation document.
 
 ### Visibility defaults
-- `NEENJA_DOCS_VISIBILITY=private` means the reader keeps both public and
+- `NEENJA_DOCS_VISIBILITY=private` means documentation keeps both public and
   private concepts.
-- `NEENJA_DOCS_VISIBILITY=public` means only public concepts survive the final
-  document model.
+- `NEENJA_DOCS_VISIBILITY=public` means only public documentation concepts
+  survive the final document model.
 - When no explicit visibility flag is provided, dev mode defaults to the full
   set and production mode defaults to the public subset.
 
@@ -398,8 +419,8 @@ ID: reader-navigation-internals
 Privacy: private
 Type: concept
 Category: Internal
-Tags: ui, navigation, search, reader
-Summary: The docs shell manages category expansion, search, hash-based entry navigation, and inline type links across concept pages.
+Tags: ui, navigation, search, reader, routing
+Summary: The reader shell switches documents from the navbar and renders document-specific sidebar navigation and routes.
 Related: parser-pipeline, internal-runtime-functions, knowledge-model-types
 
 ### Key files
@@ -407,18 +428,27 @@ Related: parser-pipeline, internal-runtime-functions, knowledge-model-types
 - `components/function-reference.tsx`
 - `components/markdown-content.tsx`
 - `src/pages/index.astro`
-- `src/pages/[conceptId].astro`
+- `src/pages/[documentSlug]/index.astro`
+- `src/pages/[documentSlug]/[entryId].astro`
+
+### Routes
+- `/` renders the default document and its first entry.
+- `/documentation/` renders the first visible documentation concept.
+- `/documentation/:conceptId/` renders a documentation concept.
+- `/project-plan/` renders the first project plan section.
+- `/project-plan/:sectionId/` renders a project plan section.
+- Function and type entries use hash anchors under the owning documentation
+  concept route.
 
 ### Behavior
-- The sidebar lists normal concepts first, then function concepts, then type
-  concepts within each category.
-- The sidebar shows a private-only indicator and leaves public concepts
-  unlabeled.
-- Function and type entries stay collapsed in the sidebar until the owning
-  concept is the active page.
-- Search returns concepts, function entries, and type entries separately.
-- Inline type references inside function and type cards use `typeIndex` to link
-  back to the owning `TypeReferenceTarget`.
+- The header navbar lists every recognized document in the collection.
+- The sidebar shows documentation categories for documentation pages.
+- The sidebar shows project plan areas for project plan pages.
+- Search is scoped to the active document.
+- Documentation search returns concepts, function entries, and type entries.
+- Project plan search returns plan sections.
+- Inline type references inside function and type cards link back to the
+  owning `TypeReferenceTarget`.
 
 ## Concept: Internal Runtime Functions
 ID: internal-runtime-functions
@@ -426,37 +456,57 @@ Privacy: private
 Type: functions
 Category: Internal
 Tags: parser, runtime, reader, internals
-Summary: Internal runtime helpers parse concept blocks, resolve visibility, and build the document model used by the reader.
+Summary: Internal runtime helpers resolve document sources, parse recognized files, and build reader models.
 Related: parser-pipeline, reader-navigation-internals, knowledge-model-types
 
 These functions are implementation details of the bundled reader, not part of a
 stable public API.
 
+#### Function: `readDocumentCollection`
+Kind: function
+Signature: `readDocumentCollection(): Promise<DocumentCollection>`
+Description: Load all recognized Neenja documents and return the full reader collection.
+Behavior:
+- Resolves the documents directory.
+- Reads recognized document files.
+- Parses documentation and project plan documents.
+- Builds `documents`, `documentsBySlug`, and `defaultDocument`.
+
 #### Function: `readKnowledgeDocument`
 Kind: function
 Signature: `readKnowledgeDocument(): Promise<KnowledgeDocument>`
-Description: Load, parse, filter, and index the canonical knowledge file for the active visibility mode.
+Description: Load and parse the documentation document only.
 Behavior:
-- Reads raw Markdown from disk.
-- Parses concepts and their structured entries.
-- Filters concepts when visibility is `public`.
-- Builds `conceptsById`, grouped categories, and `typeIndex`.
+- Preserved for legacy single-document callers.
+- Reads `NEENJA_KNOWLEDGE_PATH` or the default documentation path.
+- Parses concepts, filters by visibility, and builds a type index.
 
 #### Function: `parseConcept`
 Kind: function
 Signature: `parseConcept(block: string): Concept`
-Description: Parse one `## Concept:` block into the in-memory concept model.
+Description: Parse one `## Concept:` block into the in-memory documentation concept model.
 Behavior:
 - Reads concept metadata such as `ID`, `Privacy`, `Type`, and `Category`.
-- Routes the body through the Markdown parser or structured entry parser based
-  on `ConceptKind`.
+- Routes the body through the Markdown parser or structured entry parser based on `ConceptKind`.
+
+#### Function: `parsePlanSection`
+Kind: function
+Signature: `parsePlanSection(block: string): PlanSection`
+Description: Parse one `## Plan:` block into a structured project plan section.
+Behavior:
+- Reads `ID`, `Area`, and `Summary`.
+- Keeps additional fields as structured plan details.
+- Parses the remaining body as Markdown content.
+
+#### Function: `resolveDocumentDirectoryPath`
+Kind: function
+Signature: `resolveDocumentDirectoryPath(): Promise<string>`
+Description: Resolve the directory that should be scanned for recognized Neenja documents.
+Behavior:
+- Uses `NEENJA_DOCUMENTS_DIR` or `NEENJA_DOCUMENTS_PATH` when present.
+- Falls back to `${NEENJA_PROJECT_ROOT}/.neenja` or `${process.cwd()}/.neenja`.
 
 #### Function: `buildTypeIndex`
 Kind: function
 Signature: `buildTypeIndex(concepts: Concept[]): Record<string, TypeReferenceTarget>`
 Description: Collect the first visible occurrence of each documented type name so inline type mentions can navigate to the matching type entry.
-
-#### Function: `resolveDocumentationVisibility`
-Kind: function
-Signature: `resolveDocumentationVisibility(): DocumentationVisibility`
-Description: Decide whether the current run should expose the full docs set or only the public subset.

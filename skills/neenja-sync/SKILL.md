@@ -1,6 +1,6 @@
 ---
 name: neenja-sync
-description: Use on every task in a Neenja-enabled repository. Read `.neenja/documentation.md` before work, use it as project context, and update it before finishing whenever the task changed behavior that belongs in the canonical documentation. Respect the frontmatter `preferences:` value when it exists.
+description: Use on every task in a Neenja-enabled repository. Read `.neenja/documentation.md` and, when present, `.neenja/project-plan.md` before work; update documentation before finishing whenever the task changed behavior that belongs in the canonical documentation. Respect saved frontmatter `preferences:` values when they exist.
 ---
 
 # Neenja Sync
@@ -8,29 +8,32 @@ description: Use on every task in a Neenja-enabled repository. Read `.neenja/doc
 Use this skill on every normal agent task after the documentation has been
 bootstrapped.
 
-## Canonical documentation file
+## Canonical Neenja documents
 
 - Repo-relative canonical path: `.neenja/documentation.md`
-- The file lives inside `.neenja/`, alongside the build output.
+- Optional project plan path: `.neenja/project-plan.md`
+- These files live inside `.neenja/`, alongside the build output.
 
 ## Documentation-first workflow
 
 1. At the start of every task, read `./.neenja/documentation.md` before
    planning, editing code, or answering questions about the project.
-2. Use the documentation to build context about the architecture, workflows,
+2. If `./.neenja/project-plan.md` exists, read it too so implementation work
+   aligns with the current project intent.
+3. Use the documentation and plan to build context about the architecture, workflows,
    terminology, and important constraints.
-3. If the documentation frontmatter contains `preferences:`, follow those
+4. If either document frontmatter contains `preferences:`, follow those
    saved user preferences whenever you add, remove, reorganize, or rewrite
-   documentation.
-4. If the documentation conflicts with the code, treat the code as the current
+   project knowledge.
+5. If the documentation conflicts with the code, treat the code as the current
    implementation and update the documentation before you finish the task.
-5. Complete the assigned task using both the codebase and the canonical
-   documentation as context.
-6. Before you finish, decide whether your changes introduced or materially
+6. Complete the assigned task using the codebase and canonical Neenja documents
+   as context.
+7. Before you finish, decide whether your changes introduced or materially
    changed anything that belongs in the canonical documentation.
-7. If the answer is yes, update `./.neenja/documentation.md` in the same
+8. If the answer is yes, update `./.neenja/documentation.md` in the same
    task before your final response.
-8. If the answer is no, do not churn the documentation file just to touch it.
+9. If the answer is no, do not churn the documentation file just to touch it.
 
 ## Required knowledge file format
 
@@ -137,6 +140,11 @@ Fields:
 
 - Create `./.neenja/documentation.md`.
 - Follow the bootstrap guidance from the `/neenja-bootstrap` skill.
+
+## If the project plan does not exist yet
+
+- Do not invent a project plan during sync unless the user asks for planning.
+- If the user is starting a project from a brief, use `/neenja-plan-init`.
 
 ## Final rule
 

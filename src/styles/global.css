@@ -90,6 +90,37 @@ input[type="search"]::-webkit-search-cancel-button {
   gap: 12px;
 }
 
+.document-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.document-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.document-nav-link:hover,
+.document-nav-link.active {
+  background: rgba(232, 116, 74, 0.12);
+  color: var(--ink);
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent-strong);
@@ -592,6 +623,45 @@ input[type="search"]::-webkit-search-cancel-button {
   color: var(--ink);
 }
 
+.plan-fields {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.plan-field {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+}
+
+.plan-field dt {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.plan-field dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.plan-field-inline,
+.plan-field-rich-text > :last-child {
+  margin: 0;
+}
+
+.plan-field-list {
+  margin: 8px 0 0;
+  padding-left: 1.2rem;
+}
+
 .related-links {
   display: flex;
   flex-wrap: wrap;
@@ -1091,6 +1161,11 @@ p.function-reference-description {
 
   .docs-header-left {
     gap: 10px;
+  }
+
+  .document-nav {
+    max-width: min(56vw, 360px);
+    overflow-x: auto;
   }
 
   .sidebar {

@@ -1,10 +1,26 @@
 ---
-import { DocsShell } from "../../components/docs-shell";
-import { readDocumentCollection } from "../../lib/knowledge-file";
-import BaseLayout from "../layouts/BaseLayout.astro";
+import { DocsShell } from "../../../components/docs-shell";
+import { readDocumentCollection } from "../../../lib/knowledge-file";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export async function getStaticPaths() {
+  const collection = await readDocumentCollection();
+
+  return collection.documents.map((document) => ({
+    params: {
+      documentSlug: document.slug,
+    },
+  }));
+}
 
 const collection = await readDocumentCollection();
-const document = collection.defaultDocument;
+const { documentSlug } = Astro.params;
+const document = documentSlug ? collection.documentsBySlug[documentSlug] : undefined;
+
+if (!document) {
+  throw new Error(`Unknown document: ${documentSlug ?? "missing"}`);
+}
+
 const firstEntryId =
   document.kind === "documentation"
     ? document.concepts[0]?.id

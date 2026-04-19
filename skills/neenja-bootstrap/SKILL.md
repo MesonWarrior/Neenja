@@ -1,11 +1,12 @@
 ---
 name: neenja-bootstrap
-description: Use when a repository is initializing Neenja documentation or needs a full regeneration of `.neenja/documentation.md`. Inspect the real codebase, create or refresh the single canonical knowledge file inside `.neenja`, and accept one optional single-line preferences argument that must be written to frontmatter as `preferences:` directly under `summary:`.
+description: Use when a repository is initializing Neenja documentation or needs a full regeneration of `.neenja/documentation.md`. Inspect the real codebase, create or refresh the canonical documentation file inside `.neenja`, and accept one optional single-line preferences argument that must be written to frontmatter as `preferences:` directly under `summary:`.
 ---
 
 # Neenja Bootstrap
 
-Use this skill to create or fully refresh the canonical Neenja knowledge file.
+Use this skill to create or fully refresh the canonical Neenja documentation
+file.
 
 ## Optional input
 
@@ -21,16 +22,18 @@ documentation preferences.
 ## Canonical output location
 
 - Save the finished documentation file to `./.neenja/documentation.md`.
-- The `.neenja/` directory stores the canonical knowledge file and build
-  output for the project.
+- The `.neenja/` directory stores recognized Neenja documents and build output
+  for the project.
 - Do not place the canonical knowledge file in the repository root.
+- Do not overwrite `./.neenja/project-plan.md`; that file is owned by the
+  project plan workflow.
 
 ## Hard requirements
 
-1. The entire project documentation must live in one file only.
+1. The canonical documentation must live in one file only.
 2. Write the final documentation directly at `./.neenja/documentation.md`.
-3. Do not create multiple docs, wiki pages, or split knowledge across extra
-   files.
+3. Do not create multiple documentation files, wiki pages, or split
+   documentation across extra files.
 4. Prefer updating the existing canonical file if it already exists.
 5. Base the documentation on the real codebase, not on assumptions.
 6. Write stable concept IDs and keep them unchanged across updates.
@@ -129,13 +132,15 @@ Fields:
 
 1. Inspect the project structure before writing documentation.
 2. Read `./.neenja/documentation.md` first if it already exists.
-3. Identify the main product purpose and user-facing capabilities.
-4. Separate documentation that should be public from documentation that is only
+3. Read `./.neenja/project-plan.md` when it exists so documentation aligns with
+   the current project intent.
+4. Identify the main product purpose and user-facing capabilities.
+5. Separate documentation that should be public from documentation that is only
    useful internally for maintainers and coding agents.
-5. Identify architectural layers, data flows, and major modules.
-6. Identify operational knowledge, setup rules, integration constraints, and
+6. Identify architectural layers, data flows, and major modules.
+7. Identify operational knowledge, setup rules, integration constraints, and
    externally meaningful APIs, commands, and types.
-7. Write or update the single canonical documentation file at the required
+8. Write or update the single canonical documentation file at the required
    path.
 
 ## Quality bar
