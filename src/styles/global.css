@@ -13,7 +13,7 @@
   --accent: #e8744a;
   --accent-strong: #f0956a;
   --accent-soft: rgba(232, 116, 74, 0.15);
-  --header-height: 76px;
+  --header-height: 56px;
   --sidebar-width: 320px;
   --content-gutter: clamp(16px, 2vw, 28px);
 
@@ -62,7 +62,7 @@ input[type="search"]::-webkit-search-cancel-button {
   align-items: center;
   justify-content: center;
   min-height: var(--header-height);
-  padding: 12px var(--content-gutter);
+  padding: 4px var(--content-gutter);
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(16px);
@@ -108,6 +108,19 @@ input[type="search"]::-webkit-search-cancel-button {
   min-width: 0;
 }
 
+.docs-header .brand-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.docs-header .brand-copy .eyebrow {
+  margin: 0;
+  font-size: 0.56rem;
+  line-height: 1;
+}
+
 .brand-link {
   display: inline-block;
   font-family: var(--font-serif);
@@ -116,6 +129,11 @@ input[type="search"]::-webkit-search-cancel-button {
   font-style: italic;
   color: var(--ink);
   letter-spacing: -0.01em;
+}
+
+.docs-header .brand-link {
+  font-size: clamp(1.1rem, 1.6vw, 1.35rem);
+  line-height: 1.05;
 }
 
 .icon-button {
@@ -130,8 +148,8 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 
 .brand-mark {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -140,14 +158,14 @@ input[type="search"]::-webkit-search-cancel-button {
 
 .brand-mark-icon-image {
   display: block;
-  width: 36px;
-  height: 33px;
+  width: 32px;
+  height: 29px;
   object-fit: contain;
 }
 
 .icon-button {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   color: var(--ink);
   cursor: pointer;
@@ -186,13 +204,15 @@ input[type="search"]::-webkit-search-cancel-button {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  height: 38px;
   min-width: min(32vw, 320px);
-  padding: 10px 14px;
+  padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--muted);
   font-size: 0.92rem;
+  line-height: 1;
   cursor: pointer;
   transition:
     background 150ms ease,
@@ -1051,7 +1071,6 @@ p.function-reference-description {
 
 @media (max-width: 980px) {
   :root {
-    --header-height: 68px;
     --sidebar-width: min(86vw, 360px);
   }
 
