@@ -638,6 +638,24 @@ export function DocsShell({
     typeSearchResults.length > 0 ||
     conceptSearchResults.length > 0 ||
     planSearchResults.length > 0;
+  const renderDocumentNavigation = (className: string) =>
+    collection.documents.length > 1 ? (
+      <nav className={className} aria-label="Documents">
+        {collection.documents.map((document) => (
+          <a
+            key={document.slug}
+            href={getDocumentHref(basePath, document.slug)}
+            className={
+              document.slug === activeDocument.slug
+                ? "document-nav-link active"
+                : "document-nav-link"
+            }
+          >
+            {document.label}
+          </a>
+        ))}
+      </nav>
+    ) : null;
 
   return (
     <>
@@ -670,23 +688,7 @@ export function DocsShell({
           </div>
 
           <div className="docs-header-right">
-            {collection.documents.length > 1 ? (
-              <nav className="document-nav" aria-label="Documents">
-                {collection.documents.map((document) => (
-                  <a
-                    key={document.slug}
-                    href={getDocumentHref(basePath, document.slug)}
-                    className={
-                      document.slug === activeDocument.slug
-                        ? "document-nav-link active"
-                        : "document-nav-link"
-                    }
-                  >
-                    {document.label}
-                  </a>
-                ))}
-              </nav>
-            ) : null}
+            {renderDocumentNavigation("document-nav header-document-nav")}
 
             <button
               type="button"
@@ -721,6 +723,8 @@ export function DocsShell({
         />
 
         <aside className={isSidebarOpen ? "sidebar open" : "sidebar"}>
+          {renderDocumentNavigation("document-nav sidebar-document-nav")}
+
           <section className="sidebar-panel hero-panel">
             <p className="eyebrow">Description</p>
             <ExpandableText text={activeDocument.meta.summary} className="hero-copy" />
