@@ -17,8 +17,8 @@ Privacy: public
 Type: concept
 Category: Product
 Tags: product, overview, workflow
-Summary: Neenja reads a `.neenja/` documents folder and renders recognized Markdown documents as a local or static project knowledge site.
-Related: knowledge-file-format, prompt-workflow, cli-reference
+Summary: Neenja reads a `.neenja/` documents folder and renders recognized Markdown documents as a local or static project documentation site.
+Related: documentation-file-format, prompt-workflow, cli-reference
 
 ### What it is
 Neenja combines three things:
@@ -26,7 +26,7 @@ Neenja combines three things:
 - a `.neenja/` document folder
 - agent skills that create and maintain project documents
 - a reader UI that parses recognized Markdown files and exposes them as
-  navigable project knowledge
+  navigable project documentation
 
 The reader currently recognizes these document filenames:
 
@@ -58,14 +58,14 @@ automatically on later tasks so documentation stays current.
 - The header navbar switches between recognized document types.
 - The sidebar switches to the active document's own navigation model.
 
-## Concept: Knowledge File Format
-ID: knowledge-file-format
+## Concept: Documentation File Format
+ID: documentation-file-format
 Privacy: public
 Type: concept
 Category: Authoring
 Tags: format, markdown, schema, authoring
 Summary: Neenja uses filename-based Markdown document schemas for documentation and project plans inside `.neenja/`.
-Related: platform-overview, prompt-workflow, knowledge-model-types
+Related: platform-overview, prompt-workflow, documentation-model-types
 
 ### Documents folder
 The canonical document folder is:
@@ -171,7 +171,7 @@ Type: concept
 Category: Authoring
 Tags: skills, ai, maintenance, workflow
 Summary: Neenja uses separate skills for initial planning, documentation bootstrapping, and ongoing documentation maintenance.
-Related: platform-overview, knowledge-file-format, internal-runtime-functions
+Related: platform-overview, documentation-file-format, internal-runtime-functions
 
 ### Installing the skills
 Install the Neenja skills with:
@@ -221,7 +221,7 @@ Type: functions
 Category: Product
 Tags: cli, commands, workflow
 Summary: The Neenja CLI serves or builds the reader from a documents folder, with legacy support for a single documentation file.
-Related: platform-overview, knowledge-file-format
+Related: platform-overview, documentation-file-format
 
 The CLI is the main external interface for working with Neenja as a tool.
 
@@ -268,14 +268,14 @@ Parameters:
 - `--private`: `boolean` - Include private concepts in the build.
 - `--public`: `boolean` - Restrict the build to the public documentation subset.
 
-## Concept: Knowledge Model Types
-ID: knowledge-model-types
+## Concept: Documentation Model Types
+ID: documentation-model-types
 Privacy: public
 Type: types
 Category: Authoring
 Tags: types, schema, model, renderer
 Summary: Neenja parses recognized Markdown files into a typed document collection that powers routing, navigation, search, and rendering.
-Related: knowledge-file-format, internal-runtime-functions
+Related: documentation-file-format, internal-runtime-functions
 
 These are the main structured values used by the parser and reader.
 
@@ -344,7 +344,7 @@ Fields:
 - fields: `FunctionField[]` - Additional structured plan fields.
 - contentBlocks: `ConceptContentBlock[]` - Markdown body content.
 
-#### Type: `KnowledgeDocument`
+#### Type: `DocumentationDocument`
 Kind: object
 Description: Parsed documentation payload consumed by the reader shell.
 Fields:
@@ -386,10 +386,10 @@ Type: concept
 Category: Internal
 Tags: parser, filtering, architecture
 Summary: The parser reads a documents folder, recognizes document type by filename, and builds the reader document collection.
-Related: knowledge-file-format, knowledge-model-types, internal-runtime-functions
+Related: documentation-file-format, documentation-model-types, internal-runtime-functions
 
 ### Main flow
-The parser lives in `lib/knowledge-file.ts`. It:
+The parser lives in `lib/documentation-file.ts`. It:
 
 1. resolves the documents folder from `NEENJA_DOCUMENTS_DIR` or
    `NEENJA_DOCUMENTS_PATH`, otherwise `${projectRoot}/.neenja`
@@ -402,9 +402,10 @@ The parser lives in `lib/knowledge-file.ts`. It:
    rendering
 
 ### Legacy path
-`NEENJA_KNOWLEDGE_PATH` and CLI `--file` are still supported for a single
-legacy documentation file. When used, the reader builds a one-document
-collection with only the documentation document.
+`NEENJA_DOCUMENTATION_PATH` and CLI `--file` are supported for a single
+documentation file. When used, the reader builds a one-document collection with
+only the documentation document. If no folder documentation file exists, the
+reader can still fall back to the legacy root file `./neenja.knowledge.md`.
 
 ### Visibility defaults
 - `NEENJA_DOCS_VISIBILITY=private` means documentation keeps both public and
@@ -421,7 +422,7 @@ Type: concept
 Category: Internal
 Tags: ui, navigation, search, reader, routing
 Summary: The reader shell switches documents from the navbar and renders document-specific sidebar navigation and routes.
-Related: parser-pipeline, internal-runtime-functions, knowledge-model-types
+Related: parser-pipeline, internal-runtime-functions, documentation-model-types
 
 ### Key files
 - `components/docs-shell.tsx`
@@ -457,7 +458,7 @@ Type: functions
 Category: Internal
 Tags: parser, runtime, reader, internals
 Summary: Internal runtime helpers resolve document sources, parse recognized files, and build reader models.
-Related: parser-pipeline, reader-navigation-internals, knowledge-model-types
+Related: parser-pipeline, reader-navigation-internals, documentation-model-types
 
 These functions are implementation details of the bundled reader, not part of a
 stable public API.
@@ -472,13 +473,13 @@ Behavior:
 - Parses documentation and project plan documents.
 - Builds `documents`, `documentsBySlug`, and `defaultDocument`.
 
-#### Function: `readKnowledgeDocument`
+#### Function: `readDocumentationDocument`
 Kind: function
-Signature: `readKnowledgeDocument(): Promise<KnowledgeDocument>`
+Signature: `readDocumentationDocument(): Promise<DocumentationDocument>`
 Description: Load and parse the documentation document only.
 Behavior:
-- Preserved for legacy single-document callers.
-- Reads `NEENJA_KNOWLEDGE_PATH` or the default documentation path.
+- Supports single-document reader callers.
+- Reads `NEENJA_DOCUMENTATION_PATH` or the default documentation path.
 - Parses concepts, filters by visibility, and builds a type index.
 
 #### Function: `parseConcept`

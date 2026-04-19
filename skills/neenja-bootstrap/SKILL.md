@@ -13,7 +13,7 @@ file.
 This skill accepts one optional argument: a single-line string of user
 documentation preferences.
 
-- If the argument is provided, write it to the knowledge file frontmatter as
+- If the argument is provided, write it to the documentation file frontmatter as
   `preferences: <value>` immediately after `summary:`.
 - Treat that string as documentation guidance for scope, taxonomy, tone,
   emphasis, exclusions, or audience.
@@ -24,7 +24,7 @@ documentation preferences.
 - Save the finished documentation file to `./.neenja/documentation.md`.
 - The `.neenja/` directory stores recognized Neenja documents and build output
   for the project.
-- Do not place the canonical knowledge file in the repository root.
+- Do not place the canonical documentation file in the repository root.
 - Do not overwrite `./.neenja/project-plan.md`; that file is owned by the
   project plan workflow.
 
@@ -43,7 +43,7 @@ documentation preferences.
 9. Keep the writing dense, factual, and useful for another coding AI agent.
 10. Do not leave helper notes, scratch files, or temporary artifacts behind.
 
-## Required knowledge file format
+## Required documentation file format
 
 ```txt
 ---
@@ -138,7 +138,7 @@ Fields:
 5. Separate documentation that should be public from documentation that is only
    useful internally for maintainers and coding agents.
 6. Identify architectural layers, data flows, and major modules.
-7. Identify operational knowledge, setup rules, integration constraints, and
+7. Identify operational details, setup rules, integration constraints, and
    externally meaningful APIs, commands, and types.
 8. Write or update the single canonical documentation file at the required
    path.
@@ -147,7 +147,7 @@ Fields:
 
 - Another AI agent should be able to understand the project by reading only this
   file.
-- A human should be able to browse it as a knowledge base without extra
+- A human should be able to browse it as a documentation reference without extra
   context.
 - The file should balance breadth and signal: comprehensive, but not bloated.
 - The document should reflect the current state of the codebase.

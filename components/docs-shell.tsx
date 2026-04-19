@@ -10,13 +10,13 @@ import type {
   Concept,
   ConceptFunction,
   ConceptType,
+  DocumentationDocument,
   DocumentCollection,
   FunctionField,
-  KnowledgeDocument,
   PlanSection,
   ProjectPlanDocument,
   ReaderDocument,
-} from "../lib/knowledge-file";
+} from "../lib/documentation-file";
 
 const pendingEntryScrollStorageKey = "neenja-pending-entry-scroll";
 const scrollNavigationKeys = new Set([
@@ -69,7 +69,7 @@ function normalize(value: string) {
   return value.trim().toLowerCase();
 }
 
-function isKnowledgeDocument(document: ReaderDocument): document is KnowledgeDocument {
+function isDocumentationDocument(document: ReaderDocument): document is DocumentationDocument {
   return document.kind === "documentation";
 }
 
@@ -315,7 +315,7 @@ export function DocsShell({
   const activeDocument =
     collection.documentsBySlug[selectedDocumentSlug ?? ""] ?? collection.defaultDocument;
   const selectedConcept =
-    isKnowledgeDocument(activeDocument)
+    isDocumentationDocument(activeDocument)
       ? activeDocument.conceptsById[selectedEntryId ?? ""] ?? activeDocument.concepts[0]
       : undefined;
   const selectedPlanSection =
@@ -323,7 +323,7 @@ export function DocsShell({
       ? activeDocument.sectionsById[selectedEntryId ?? ""] ?? activeDocument.sections[0]
       : undefined;
   const visibleRelatedConcepts =
-    isKnowledgeDocument(activeDocument) && selectedConcept
+    isDocumentationDocument(activeDocument) && selectedConcept
       ? selectedConcept.related
           .map((relatedId) => activeDocument.conceptsById[relatedId])
           .filter((relatedConcept): relatedConcept is Concept => Boolean(relatedConcept))
@@ -331,7 +331,7 @@ export function DocsShell({
   const selectedGroupSlug =
     selectedConcept?.categorySlug ?? selectedPlanSection?.areaSlug;
   const query = normalize(search);
-  const documentationDocument = isKnowledgeDocument(activeDocument) ? activeDocument : undefined;
+  const documentationDocument = isDocumentationDocument(activeDocument) ? activeDocument : undefined;
   const projectPlanDocument = isProjectPlanDocument(activeDocument) ? activeDocument : undefined;
   const conceptSearchResults = documentationDocument
     ? documentationDocument.concepts.filter((concept) => conceptMatchesSearch(concept, query))
@@ -362,7 +362,7 @@ export function DocsShell({
     ? projectPlanDocument.sections.filter((section) => planSectionMatchesSearch(section, query))
     : [];
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    const groups = isKnowledgeDocument(activeDocument)
+    const groups = isDocumentationDocument(activeDocument)
       ? activeDocument.categories
       : activeDocument.areas;
 
@@ -728,7 +728,7 @@ export function DocsShell({
           </section>
 
           <section className="concept-list-panel" aria-label="Navigation">
-            {isKnowledgeDocument(activeDocument)
+            {isDocumentationDocument(activeDocument)
               ? activeDocument.categories.map((category) => {
                   const groupKey = getDocumentGroupKey(activeDocument.slug, category.slug);
                   const isOpen = Boolean(openGroups[groupKey]);

@@ -4,8 +4,9 @@ import path from "node:path";
 export const defaultDocumentsDirectoryName = ".neenja";
 export const documentationDocumentFileName = "documentation.md";
 export const projectPlanDocumentFileName = "project-plan.md";
-export const defaultKnowledgeDocumentFileName = `${defaultDocumentsDirectoryName}/${documentationDocumentFileName}`;
-export const legacyKnowledgeDocumentFileName = "neenja.knowledge.md";
+export const defaultDocumentationDocumentFileName = `${defaultDocumentsDirectoryName}/${documentationDocumentFileName}`;
+export const legacyRootDocumentationDocumentFileName = "neenja.knowledge.md";
+const documentationPathEnvName = "NEENJA_DOCUMENTATION_PATH";
 
 export type DocumentationVisibility = "public" | "private";
 export type DocumentKind = "documentation" | "project-plan";
@@ -80,7 +81,7 @@ export type TypeReferenceTarget = {
   name: string;
 };
 
-export type KnowledgeDocument = {
+export type DocumentationDocument = {
   kind: "documentation";
   slug: "documentation";
   label: string;
@@ -121,7 +122,7 @@ export type ProjectPlanDocument = {
   sectionsById: Record<string, PlanSection>;
 };
 
-export type ReaderDocument = KnowledgeDocument | ProjectPlanDocument;
+export type ReaderDocument = DocumentationDocument | ProjectPlanDocument;
 
 export type DocumentCollection = {
   visibility: DocumentationVisibility;
@@ -135,8 +136,12 @@ type RecognizedDocumentFile = {
   path: string;
 };
 
-export async function resolveKnowledgeDocumentPath(): Promise<string> {
-  const configuredPath = process.env.NEENJA_KNOWLEDGE_PATH;
+function getConfiguredDocumentationPath() {
+  return process.env[documentationPathEnvName];
+}
+
+export async function resolveDocumentationDocumentPath(): Promise<string> {
+  const configuredPath = getConfiguredDocumentationPath();
 
   if (configuredPath) {
     return path.resolve(configuredPath);
@@ -145,13 +150,13 @@ export async function resolveKnowledgeDocumentPath(): Promise<string> {
   const projectRoot = process.env.NEENJA_PROJECT_ROOT
     ? path.resolve(process.env.NEENJA_PROJECT_ROOT)
     : process.cwd();
-  const canonicalPath = path.join(projectRoot, defaultKnowledgeDocumentFileName);
+  const canonicalPath = path.join(projectRoot, defaultDocumentationDocumentFileName);
 
   try {
     await fs.access(canonicalPath);
     return canonicalPath;
   } catch {
-    return path.join(projectRoot, legacyKnowledgeDocumentFileName);
+    return path.join(projectRoot, legacyRootDocumentationDocumentFileName);
   }
 }
 
@@ -163,10 +168,10 @@ export async function resolveDocumentDirectoryPath(): Promise<string> {
     return path.resolve(configuredDirectory);
   }
 
-  const configuredKnowledgePath = process.env.NEENJA_KNOWLEDGE_PATH;
+  const configuredDocumentationPath = getConfiguredDocumentationPath();
 
-  if (configuredKnowledgePath) {
-    return path.dirname(path.resolve(configuredKnowledgePath));
+  if (configuredDocumentationPath) {
+    return path.dirname(path.resolve(configuredDocumentationPath));
   }
 
   const projectRoot = process.env.NEENJA_PROJECT_ROOT
@@ -636,7 +641,7 @@ function resolveDocumentationVisibility(): DocumentationVisibility {
   return process.env.NODE_ENV === "production" ? "public" : "private";
 }
 
-function parseKnowledgeDocument(raw: string, documentPath: string): KnowledgeDocument {
+function parseDocumentationDocument(raw: string, documentPath: string): DocumentationDocument {
   const { meta, body } = parseFrontmatter(raw);
   const parsedConcepts = splitConceptBlocks(body).map(parseConcept);
   const visibility = resolveDocumentationVisibility();
@@ -652,7 +657,7 @@ function parseKnowledgeDocument(raw: string, documentPath: string): KnowledgeDoc
     label: "Documentation",
     path: documentPath,
     meta: getDocumentMeta(meta, {
-      title: "Knowledge Base",
+      title: "Documentation",
       summary: "Project documentation.",
     }),
     visibility,
@@ -756,15 +761,16 @@ function getDocumentKindByFileName(fileName: string): DocumentKind | undefined {
 }
 
 async function resolveRecognizedDocumentFiles(): Promise<RecognizedDocumentFile[]> {
-  const configuredKnowledgePath = process.env.NEENJA_KNOWLEDGE_PATH
-    ? path.resolve(process.env.NEENJA_KNOWLEDGE_PATH)
+  const configuredDocumentationPath = getConfiguredDocumentationPath();
+  const resolvedConfiguredDocumentationPath = configuredDocumentationPath
+    ? path.resolve(configuredDocumentationPath)
     : undefined;
 
-  if (configuredKnowledgePath) {
+  if (resolvedConfiguredDocumentationPath) {
     return [
       {
         kind: "documentation",
-        path: configuredKnowledgePath,
+        path: resolvedConfiguredDocumentationPath,
       },
     ];
   }
@@ -774,7 +780,7 @@ async function resolveRecognizedDocumentFiles(): Promise<RecognizedDocumentFile[
     ? path.resolve(process.env.NEENJA_PROJECT_ROOT)
     : process.cwd();
   const defaultDocumentsDirectoryPath = path.join(projectRoot, defaultDocumentsDirectoryName);
-  const legacyPath = path.join(projectRoot, legacyKnowledgeDocumentFileName);
+  const legacyPath = path.join(projectRoot, legacyRootDocumentationDocumentFileName);
   const files: RecognizedDocumentFile[] = [];
 
   try {
@@ -854,32 +860,32 @@ async function readRecognizedDocument(file: RecognizedDocumentFile): Promise<Rea
     return parseProjectPlanDocument(raw, file.path);
   }
 
-  return parseKnowledgeDocument(raw, file.path);
+  return parseDocumentationDocument(raw, file.path);
 }
 
-export async function readKnowledgeDocumentRaw() {
-  const knowledgeDocumentPath = await resolveKnowledgeDocumentPath();
+export async function readDocumentationDocumentRaw() {
+  const documentationDocumentPath = await resolveDocumentationDocumentPath();
 
   try {
-    return await fs.readFile(knowledgeDocumentPath, "utf8");
+    return await fs.readFile(documentationDocumentPath, "utf8");
   } catch (error) {
     if (
       error instanceof Error &&
       "code" in error &&
       error.code === "ENOENT"
     ) {
-      throw new Error(`Knowledge file was not found at ${knowledgeDocumentPath}.`);
+      throw new Error(`Documentation file was not found at ${documentationDocumentPath}.`);
     }
 
     throw error;
   }
 }
 
-export async function readKnowledgeDocument(): Promise<KnowledgeDocument> {
-  const raw = await readKnowledgeDocumentRaw();
-  const documentPath = await resolveKnowledgeDocumentPath();
+export async function readDocumentationDocument(): Promise<DocumentationDocument> {
+  const raw = await readDocumentationDocumentRaw();
+  const documentPath = await resolveDocumentationDocumentPath();
 
-  return parseKnowledgeDocument(raw, documentPath);
+  return parseDocumentationDocument(raw, documentPath);
 }
 
 export async function readDocumentCollection(): Promise<DocumentCollection> {

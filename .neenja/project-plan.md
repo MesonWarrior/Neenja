@@ -12,7 +12,7 @@ preferences: Keep project plans concise, structured, and implementation-ready fo
 ## Plan: Project Definition
 ID: project-definition
 Area: Project
-Summary: Neenja is a CLI and reader for canonical project knowledge stored as Markdown files under `.neenja`.
+Summary: Neenja is a CLI and reader for canonical project documentation stored as Markdown files under `.neenja`.
 Project: Neenja
 Audience:
 - developers using coding agents

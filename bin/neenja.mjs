@@ -12,8 +12,8 @@ const defaultDocumentsDirectoryPath = ".neenja";
 const defaultDocumentationFilePath = path.join(defaultDocumentsDirectoryPath, "documentation.md");
 const defaultProjectPlanFilePath = path.join(defaultDocumentsDirectoryPath, "project-plan.md");
 const defaultDocumentsDirectoryDisplayPath = ".neenja";
-const legacyKnowledgeFilePath = "neenja.knowledge.md";
-const legacyKnowledgeFileDisplayPath = "./neenja.knowledge.md";
+const legacyRootDocumentationFilePath = "neenja.knowledge.md";
+const legacyRootDocumentationFileDisplayPath = "./neenja.knowledge.md";
 const requireFromCli = createRequire(import.meta.url);
 
 function printHelp() {
@@ -36,7 +36,7 @@ Notes:
   - If no folder is provided, Neenja reads ./${defaultDocumentsDirectoryDisplayPath}.
   - Recognized documents are ${defaultDocumentationFilePath} and ${defaultProjectPlanFilePath}.
   - If the documents folder has no documentation file, Neenja falls back to
-    ${legacyKnowledgeFileDisplayPath}.
+    ${legacyRootDocumentationFileDisplayPath}.
 
 Examples:
   neenja serve
@@ -192,21 +192,21 @@ async function resolveDocumentsTarget(projectRoot, options) {
   }
 
   if (options.file) {
-    const knowledgeFilePath = path.resolve(projectRoot, options.file);
+    const documentationFilePath = path.resolve(projectRoot, options.file);
 
-    if (await pathExists(knowledgeFilePath)) {
+    if (await pathExists(documentationFilePath)) {
       return {
-        documentsDirectoryPath: path.dirname(knowledgeFilePath),
-        knowledgeFilePath,
+        documentsDirectoryPath: path.dirname(documentationFilePath),
+        documentationFilePath,
       };
     }
 
     throw new Error(
       [
-        "Legacy knowledge file was not found.",
+        "Legacy documentation file was not found.",
         "",
         "Checked path:",
-        `- ${knowledgeFilePath}`,
+        `- ${documentationFilePath}`,
       ].join("\n"),
     );
   }
@@ -219,17 +219,17 @@ async function resolveDocumentsTarget(projectRoot, options) {
     if (await directoryHasRecognizedDocuments(candidateDirectory)) {
       return {
         documentsDirectoryPath: candidateDirectory,
-        knowledgeFilePath: undefined,
+        documentationFilePath: undefined,
       };
     }
   }
 
-  const legacyPath = path.join(projectRoot, legacyKnowledgeFilePath);
+  const legacyPath = path.join(projectRoot, legacyRootDocumentationFilePath);
 
   if (!options.dir && await pathExists(legacyPath)) {
     return {
       documentsDirectoryPath: projectRoot,
-      knowledgeFilePath: legacyPath,
+      documentationFilePath: legacyPath,
     };
   }
 
@@ -254,14 +254,14 @@ function resolveVisibility(mode, fallbackVisibility) {
   return mode ?? fallbackVisibility;
 }
 
-function getSharedAstroEnv(projectRoot, documentsDirectoryPath, knowledgeFilePath, extraEnv = {}) {
+function getSharedAstroEnv(projectRoot, documentsDirectoryPath, documentationFilePath, extraEnv = {}) {
   return {
     ...process.env,
     ...extraEnv,
     ASTRO_TELEMETRY_DISABLED: "1",
     NEENJA_PROJECT_ROOT: projectRoot,
     NEENJA_DOCUMENTS_DIR: documentsDirectoryPath,
-    ...(knowledgeFilePath ? { NEENJA_KNOWLEDGE_PATH: knowledgeFilePath } : {}),
+    ...(documentationFilePath ? { NEENJA_DOCUMENTATION_PATH: documentationFilePath } : {}),
   };
 }
 
@@ -305,7 +305,7 @@ async function runAstro(command, astroArgs, env) {
 
 async function handleServe(projectRoot, args) {
   const target = await resolveDocumentsTarget(projectRoot, args.options);
-  const env = getSharedAstroEnv(projectRoot, target.documentsDirectoryPath, target.knowledgeFilePath, {
+  const env = getSharedAstroEnv(projectRoot, target.documentsDirectoryPath, target.documentationFilePath, {
     NEENJA_DOCS_VISIBILITY: resolveVisibility(args.options.visibility, "private"),
   });
   return runAstro("dev", args.passthroughArgs, env);
@@ -314,7 +314,7 @@ async function handleServe(projectRoot, args) {
 async function handleBuild(projectRoot, args) {
   const target = await resolveDocumentsTarget(projectRoot, args.options);
   const outDir = path.join(projectRoot, ".neenja", "build");
-  const env = getSharedAstroEnv(projectRoot, target.documentsDirectoryPath, target.knowledgeFilePath, {
+  const env = getSharedAstroEnv(projectRoot, target.documentsDirectoryPath, target.documentationFilePath, {
     NEENJA_DOCS_VISIBILITY: resolveVisibility(args.options.visibility, "public"),
   });
   return runAstro("build", ["--outDir", outDir, ...args.passthroughArgs], env);
@@ -329,7 +329,7 @@ async function handleBuildGithub(projectRoot, args) {
     throw new Error("Missing required options for build-github: --domain <url> and --page <path>.");
   }
 
-  const env = getSharedAstroEnv(projectRoot, target.documentsDirectoryPath, target.knowledgeFilePath, {
+  const env = getSharedAstroEnv(projectRoot, target.documentsDirectoryPath, target.documentationFilePath, {
     NEENJA_DOCS_VISIBILITY: resolveVisibility(args.options.visibility, "public"),
     PUBLIC_SITE_URL: domain,
     PUBLIC_BASE_PATH: page,

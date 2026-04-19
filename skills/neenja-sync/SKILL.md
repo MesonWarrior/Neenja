@@ -24,7 +24,7 @@ bootstrapped.
    terminology, and important constraints.
 4. If either document frontmatter contains `preferences:`, follow those
    saved user preferences whenever you add, remove, reorganize, or rewrite
-   project knowledge.
+   project documentation.
 5. If the documentation conflicts with the code, treat the code as the current
    implementation and update the documentation before you finish the task.
 6. Complete the assigned task using the codebase and canonical Neenja documents
@@ -35,7 +35,7 @@ bootstrapped.
    task before your final response.
 9. If the answer is no, do not churn the documentation file just to touch it.
 
-## Required knowledge file format
+## Required documentation file format
 
 ```txt
 ---
@@ -98,7 +98,7 @@ Fields:
 - `Privacy: public` is for documentation that should ship to consumers,
   integrators, plugin authors, or developers who use the project without
   working inside its source code.
-- `Privacy: private` is for internal implementation knowledge, concrete file
+- `Privacy: private` is for internal implementation details, concrete file
   names, internal helpers, architecture details for maintainers, and agent-only
   guidance.
 - Do not mention the public/private split in reader-facing prose. Treat it as
@@ -136,7 +136,7 @@ Fields:
 - temporary debugging code
 - implementation noise that does not change how the system works
 
-## If the canonical knowledge file does not exist yet
+## If the canonical documentation file does not exist yet
 
 - Create `./.neenja/documentation.md`.
 - Follow the bootstrap guidance from the `/neenja-bootstrap` skill.

@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from "react";
-import type { ConceptFunction, ConceptType, FunctionField, TypeReferenceTarget } from "../lib/knowledge-file";
+import type { ConceptFunction, ConceptType, FunctionField, TypeReferenceTarget } from "../lib/documentation-file";
 import { InlineMarkdown, MarkdownContent } from "./markdown-content";
 
 type EntryNavigationHandler = (
