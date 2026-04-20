@@ -1,36 +1,25 @@
 ---
 name: neenja-bootstrap
-description: Use when a repository is initializing Neenja documentation or needs a full regeneration of `.neenja/documentation.md`. Inspect the real codebase, create or refresh the canonical documentation file inside `.neenja`, and accept one optional single-line preferences argument that must be written to frontmatter as `preferences:` directly under `summary:`.
+description: Do not use this skill on its own. This skill is intended for generating Neenja documentation files, taking user settings into account, within an existing project under development.
 ---
 
 # Neenja Bootstrap
 
-Use this skill to create or fully refresh the canonical Neenja documentation
-file.
+User uses this skill to generate Neenja documentation files, based on they preferences, in already existing project.
 
-## Optional input
+## Documentation types
 
-This skill accepts one optional argument: a single-line string of user
-documentation preferences.
+There are three types of documentation files:
 
-- If the argument is provided, write it to the documentation file frontmatter as
-  `preferences: <value>` immediately after `summary:`.
-- Treat that string as documentation guidance for scope, taxonomy, tone,
-  emphasis, exclusions, or audience.
-- If no preferences string is provided, omit the `preferences:` line.
+1. documentation.md
+2. project-plan.md
+3. task-tree.yaml
 
-## Canonical output location
+All of them must be created in the .neenja folder at the root of the project.
 
-- Save the finished documentation file to `./.neenja/documentation.md`.
-- The `.neenja/` directory stores recognized Neenja documents and build output
-  for the project.
-- Do not place the canonical documentation file in the repository root.
-- Do not overwrite `./.neenja/project-plan.md`; that file is owned by the
-  project plan workflow.
-- Do not overwrite `./.neenja/task-tree.yaml`; that file is owned by the project
-  planning workflow.
+## documentation.md
 
-## Hard requirements
+### documentation.md requirements
 
 1. The canonical documentation must live in one file only.
 2. Write the final documentation directly at `./.neenja/documentation.md`.
@@ -45,7 +34,7 @@ documentation preferences.
 9. Keep the writing dense, factual, and useful for another coding AI agent.
 10. Do not leave helper notes, scratch files, or temporary artifacts behind.
 
-## Required documentation file format
+### documentation.md file format
 
 ```txt
 ---
@@ -73,7 +62,7 @@ Related: concept-id-one, concept-id-two
 
 If there is no user preferences string, omit the `preferences:` line.
 
-## Concept body rules
+### documentation.md concept body rules
 
 - `Type: concept`
   Use Markdown sections and free-form explanatory content.
@@ -101,7 +90,7 @@ Fields:
 - <field name>: <type> - <description>
 ```
 
-## Concept authoring rules
+### documentation.md concept authoring rules
 
 - Every concept must start with `## Concept:`.
 - Every concept must include `ID`, `Privacy`, `Type`, `Category`, `Tags`,
@@ -130,37 +119,7 @@ Fields:
 - Prefer a few strong concepts over many shallow concepts.
 - Merge duplicates instead of creating overlapping entries.
 
-## Repository analysis workflow
-
-1. Inspect the project structure before writing documentation.
-2. Read `./.neenja/documentation.md` first if it already exists.
-3. Read `./.neenja/project-plan.md` when it exists so documentation aligns with
-   the current technical architecture, contracts, constraints, and
-   user-specified implementation details.
-4. Read `./.neenja/task-tree.yaml` when it exists so documentation aligns with
-   the current implementation graph.
-5. Identify the main product purpose and user-facing capabilities.
-6. Separate documentation that should be public from documentation that is only
-   useful internally for maintainers and coding agents.
-7. Identify architectural layers, data flows, and major modules.
-8. Identify operational details, setup rules, integration constraints, and
-   externally meaningful APIs, commands, and types.
-9. Write or update the single canonical documentation file at the required
-   path.
-
-## Quality bar
-
-- Another AI agent should be able to understand the project by reading only this
-  file.
-- A human should be able to browse it as a documentation reference without extra
-  context.
-- The file should balance breadth and signal: comprehensive, but not bloated.
-- The document should reflect the current state of the codebase.
-- Public concepts should be usable as product-facing reference material.
-- Private concepts should help maintainers and agents work safely inside the
-  repository.
-
-## What to avoid
+### documentation.md what to avoid
 
 - vague statements with no implementation grounding
 - duplicating the same idea in multiple concepts
@@ -168,8 +127,25 @@ Fields:
 - undocumented assumptions
 - spreading documentation across multiple files
 
-## Final rule
+## Repository analysis workflow
 
-The finished deliverable is one documentation file saved at
-`./.neenja/documentation.md`. If you generate helper notes during analysis,
-do not keep them as separate artifacts.
+1. Inspect the project structure before writing documentation.
+2. Read `./.neenja/documentation.md`, `./.neenja/project-plan.md` and `./.neenja/task-tree.yaml` first if they already exist.
+5. Identify the main product purpose and user-facing capabilities.
+6. For `documentation.md`, separate documentation that should be public from documentation that is only
+   useful internally for maintainers and coding agents.
+7. Identify architectural layers, data flows, and major modules.
+8. Identify operational details, setup rules, integration constraints, and
+   externally meaningful APIs, commands, and types.
+9. Write or update the single canonical documentation file at `./.neenja/documentation.md`
+10. Understand the project context and create or update the `project-plan`.md file, writing a high-level technical plan for the project.
+11. Create an empty `task-tree.yaml` with the required fields, but without any tasks.
+
+## Quality bar
+
+- Another AI agent should be able to understand the project by reading only these files.
+- A human should be able to browse them as a documentation reference without extra context.
+- Documentation and project plan should balance breadth and signal: comprehensive, but not bloated.
+- Documentation should reflect the current state of the codebase.
+- Public concepts in documentation should be usable as product-facing reference material.
+- Private concepts in documentation should help maintainers and agents work safely inside the repository.
