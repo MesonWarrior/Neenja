@@ -21,7 +21,7 @@ export async function getStaticPaths() {
           ? document.sections.map((section) => ({
               id: section.id,
               title: section.title,
-              summary: getReaderDocumentDescription(document),
+              summary: section.summary || getReaderDocumentDescription(document),
             }))
           : document.tasks.map((task) => ({
               id: task.id,
@@ -65,7 +65,7 @@ const entryDescription =
   document.kind === "documentation"
     ? document.conceptsById[entryId ?? ""]?.summary
     : document.kind === "project-plan"
-      ? getReaderDocumentDescription(document)
+      ? document.sectionsById[entryId ?? ""]?.summary || getReaderDocumentDescription(document)
       : document.tasksById[entryId ?? ""]?.content || document.meta.summary;
 
 const basePath = import.meta.env.BASE_URL;

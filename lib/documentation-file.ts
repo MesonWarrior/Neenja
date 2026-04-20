@@ -105,6 +105,16 @@ export type PlanSection = {
   title: string;
   area: string;
   areaSlug: string;
+  summary: string;
+  fields: FunctionField[];
+  content: string;
+  contentBlocks: ConceptContentBlock[];
+  detailBlocks: PlanDetailBlock[];
+};
+
+export type PlanDetailBlock = {
+  id: string;
+  title: string;
   fields: FunctionField[];
   content: string;
   contentBlocks: ConceptContentBlock[];
@@ -328,6 +338,10 @@ function splitPlanBlocks(body: string) {
   return splitHeadingBlocks(body, /^## Plan:\s+.+$/);
 }
 
+function splitPlanDetailBlocks(body: string) {
+  return splitHeadingBlocks(body, /^###\s+.+$/);
+}
+
 function parseListValue(value: string) {
   return value
     .split(",")
@@ -414,12 +428,14 @@ function getFunctionFieldItems(fields: FunctionField[], label: string) {
       : [];
 }
 
+const referenceFieldPattern = /^([A-Za-z][A-Za-z0-9 /&()_-]*):\s*(.*)$/;
+
 function parseReferenceFields(lines: string[]) {
   const fields: FunctionField[] = [];
   let currentField: FunctionField | null = null;
 
   for (const line of lines) {
-    const fieldMatch = /^([A-Za-z][A-Za-z ]+):\s*(.*)$/.exec(line);
+    const fieldMatch = referenceFieldPattern.exec(line);
 
     if (fieldMatch) {
       if (currentField) {
@@ -459,6 +475,73 @@ function parseReferenceFields(lines: string[]) {
   }
 
   return fields;
+}
+
+function parseLeadingReferenceFields(lines: string[]) {
+  const fields: FunctionField[] = [];
+  let currentField: FunctionField | null = null;
+  let bodyStartIndex = 0;
+
+  const pushCurrentField = () => {
+    if (!currentField) {
+      return;
+    }
+
+    fields.push(finalizeFunctionField(currentField));
+    currentField = null;
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+
+    if (line.trim() === "") {
+      pushCurrentField();
+      bodyStartIndex = index + 1;
+      break;
+    }
+
+    const fieldMatch = referenceFieldPattern.exec(line);
+
+    if (fieldMatch) {
+      pushCurrentField();
+      currentField = {
+        label: fieldMatch[1],
+        value: fieldMatch[2].trim(),
+        items: [],
+      };
+      bodyStartIndex = index + 1;
+      continue;
+    }
+
+    const listItemMatch = /^\s*-\s+(.*)$/.exec(line);
+
+    if (currentField && listItemMatch) {
+      currentField.items.push(listItemMatch[1].trim());
+      bodyStartIndex = index + 1;
+      continue;
+    }
+
+    if (currentField && /^\s+/.test(line)) {
+      currentField.value = currentField.value
+        ? `${currentField.value}\n${line.trim()}`
+        : line.trim();
+      bodyStartIndex = index + 1;
+      continue;
+    }
+
+    pushCurrentField();
+    bodyStartIndex = index;
+    break;
+  }
+
+  if (currentField) {
+    pushCurrentField();
+  }
+
+  return {
+    fields,
+    bodyStartIndex,
+  };
 }
 
 function parseFunctionBlock(block: string, usedIds: Set<string>): ConceptFunction {
@@ -752,32 +835,47 @@ function parseDocumentationDocument(raw: string, documentPath: string): Document
 function parsePlanSection(block: string): PlanSection {
   const lines = block.split("\n");
   const title = lines[0].replace(/^## Plan:\s+/, "").trim();
-  const fieldLines: string[] = [];
-  let bodyStartIndex = 1;
-
-  for (let index = 1; index < lines.length; index += 1) {
-    const line = lines[index];
-
-    if (line.trim() === "") {
-      bodyStartIndex = index + 1;
-      break;
-    }
-
-    fieldLines.push(line);
-    bodyStartIndex = index + 1;
-  }
-
-  const fields = parseReferenceFields(fieldLines);
+  const { fields, bodyStartIndex } = parseLeadingReferenceFields(lines.slice(1));
   const area = getFunctionFieldText(fields, "Area") || "Plan";
-  const content = lines.slice(bodyStartIndex).join("\n").trim();
+  const summary = getFunctionFieldText(fields, "Summary");
+  const content = lines.slice(bodyStartIndex + 1).join("\n").trim();
   const hiddenFieldLabels = new Set(["id", "area", "summary"]);
+  const planDetailBlocks = splitPlanDetailBlocks(content);
+  const detailBlockIds = new Set<string>();
+  const detailBlocks = planDetailBlocks.map((detailBlock) =>
+    parsePlanDetailBlock(detailBlock, detailBlockIds),
+  );
+  const firstDetailBlockIndex =
+    planDetailBlocks.length > 0 ? content.indexOf(planDetailBlocks[0]) : -1;
+  const introContent =
+    firstDetailBlockIndex >= 0
+      ? content.slice(0, firstDetailBlockIndex).trim()
+      : content;
 
   return {
     id: getFunctionFieldText(fields, "ID") || slugify(title),
     title,
     area,
     areaSlug: slugify(area),
+    summary,
     fields: fields.filter((field) => !hiddenFieldLabels.has(normalizeFieldLabel(field.label))),
+    content,
+    contentBlocks: parseMarkdownBlocks(introContent),
+    detailBlocks,
+  };
+}
+
+function parsePlanDetailBlock(block: string, usedIds: Set<string>): PlanDetailBlock {
+  const lines = block.split("\n");
+  const title = lines[0].replace(/^###\s+/, "").trim();
+  const { fields, bodyStartIndex } = parseLeadingReferenceFields(lines.slice(1));
+  const content = lines.slice(bodyStartIndex + 1).join("\n").trim();
+  const baseId = slugify(title) || "detail";
+
+  return {
+    id: ensureUniqueId(baseId, usedIds),
+    title,
+    fields,
     content,
     contentBlocks: parseMarkdownBlocks(content),
   };

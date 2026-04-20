@@ -135,7 +135,8 @@ Fields:
 1. Inspect the project structure before writing documentation.
 2. Read `./.neenja/documentation.md` first if it already exists.
 3. Read `./.neenja/project-plan.md` when it exists so documentation aligns with
-   the current project intent.
+   the current technical architecture, contracts, constraints, and
+   user-specified implementation details.
 4. Read `./.neenja/task-tree.yaml` when it exists so documentation aligns with
    the current implementation graph.
 5. Identify the main product purpose and user-facing capabilities.

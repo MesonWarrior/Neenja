@@ -171,10 +171,22 @@ function planSectionMatchesSearch(section: PlanSection, query: string) {
   const haystack = [
     section.title,
     section.area,
+    section.summary,
     section.fields
       .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
       .join("\n"),
     section.contentBlocks.map((block) => block.content).join("\n"),
+    section.detailBlocks
+      .map((detailBlock) =>
+        [
+          detailBlock.title,
+          detailBlock.fields
+            .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
+            .join("\n"),
+          detailBlock.contentBlocks.map((block) => block.content).join("\n"),
+        ].join("\n"),
+      )
+      .join("\n"),
   ]
     .join("\n")
     .toLowerCase();
@@ -316,6 +328,36 @@ function PlanFields({ fields }: { fields: FunctionField[] }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+function PlanDetailBlocks({ section }: { section: PlanSection }) {
+  if (section.detailBlocks.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="plan-detail-blocks">
+      {section.detailBlocks.map((detailBlock) => (
+        <section key={detailBlock.id} className="plan-detail-block">
+          <header className="plan-detail-header">
+            <h3>{detailBlock.title}</h3>
+            <PlanFields fields={detailBlock.fields} />
+          </header>
+
+          {detailBlock.contentBlocks.length > 0 ? (
+            <div className="plan-detail-body">
+              {detailBlock.contentBlocks.map((block, index) => (
+                <MarkdownContent
+                  key={`${detailBlock.id}-markdown-${index}`}
+                  content={block.content}
+                />
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -1682,6 +1724,9 @@ export function DocsShell({
               <header className="reader-header">
                 <p className="eyebrow">{selectedPlanSection.area}</p>
                 <h2>{selectedPlanSection.title}</h2>
+                {selectedPlanSection.summary ? (
+                  <p className="reader-summary">{selectedPlanSection.summary}</p>
+                ) : null}
 
                 <PlanFields fields={selectedPlanSection.fields} />
               </header>
@@ -1693,6 +1738,8 @@ export function DocsShell({
                     content={block.content}
                   />
                 ))}
+
+                <PlanDetailBlocks section={selectedPlanSection} />
               </div>
             </article>
           ) : null}
@@ -1868,6 +1915,9 @@ export function DocsShell({
                         >
                           <span className="search-result-eyebrow">{section.area}</span>
                           <strong className="search-result-title">{section.title}</strong>
+                          {section.summary ? (
+                            <span className="search-result-summary">{section.summary}</span>
+                          ) : null}
                         </a>
                       ))}
                     </section>

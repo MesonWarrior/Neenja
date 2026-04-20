@@ -3,7 +3,7 @@ title: Neenja Documentation
 project: Neenja
 version: 1
 updated: 2026-04-20
-summary: Neenja keeps AI-friendly project documents current and renders documentation, project plans, and task trees as a browsable reader.
+summary: Neenja keeps AI-friendly project documents current and renders documentation, technical project plans, and task trees as a browsable reader.
 ---
 
 # Neenja Documentation
@@ -17,7 +17,7 @@ Privacy: public
 Type: concept
 Category: Product
 Tags: product, overview, workflow
-Summary: Neenja reads a `.neenja/` documents folder and renders recognized project documents as a local or static project documentation site.
+Summary: Neenja reads a `.neenja/` documents folder and renders recognized documentation, technical plans, and task trees as a local or static project reader.
 Related: documentation-file-format, prompt-workflow, cli-reference
 
 ### What it is
@@ -31,7 +31,7 @@ Neenja combines three things:
 The reader currently recognizes these document filenames:
 
 - `.neenja/documentation.md` for concept documentation
-- `.neenja/project-plan.md` for a structured project plan
+- `.neenja/project-plan.md` for a technical architecture and implementation plan
 - `.neenja/task-tree.yaml` for a decomposed implementation task tree
 
 The document type is determined by filename. Unknown files in the folder are
@@ -40,7 +40,7 @@ ignored by the reader.
 ### Typical usage
 1. Run `npx skills add MesonWarrior/Neenja --all`.
 2. Use `/neenja-init` at the start of a project when the user gives the
-   product brief and wants a structured plan candidate for review.
+   brief and wants a technical plan plus task tree candidate for review.
 3. Use `/neenja-bootstrap` once so an agent can generate
    `.neenja/documentation.md` from the actual repository.
 4. Run `neenja serve` while working locally.
@@ -69,7 +69,7 @@ Privacy: public
 Type: concept
 Category: Authoring
 Tags: format, markdown, schema, authoring
-Summary: Neenja uses filename-based document schemas for documentation, project plans, and YAML task trees inside `.neenja/`.
+Summary: Neenja uses filename-based document schemas for documentation, technical project plans, and YAML task trees inside `.neenja/`.
 Related: platform-overview, prompt-workflow, documentation-model-types
 
 ### Documents folder
@@ -129,39 +129,55 @@ Related: concept-id-one, concept-id-two
   `#### Type:` blocks.
 
 ### Project plan file
-The project plan file starts with frontmatter:
+The project plan file is a technical architecture and implementation-intent
+document. It starts with frontmatter:
 
 ```txt
 ---
-title: <project name> Project Plan
+title: <project name> Technical Project Plan
 project: <project name>
 version: 1
 updated: <YYYY-MM-DD>
-preferences: <optional single-line user project preferences>
+preferences: <optional single-line user technical preferences>
 ---
 ```
 
-`preferences:` is optional. It stores stable user preferences that apply to the
-project, such as product taste, technical constraints, exclusions, or preferred
-decision style.
+`preferences:` is optional. It stores stable technical preferences such as stack
+choices, architecture style, performance targets, security posture, exclusions,
+or preferred decision style.
 
-After frontmatter, the plan uses `## Plan:` blocks:
+After frontmatter, the plan uses `## Plan:` blocks with optional `###` detail
+blocks:
 
 ```txt
 ## Plan: <Human Section Title>
 ID: <stable-machine-id>
-Area: <Project|Goal|Audience|Scope|Delivery|Risks|Decisions>
+Area: <Architecture|Runtime|Frontend|Backend|Data Contracts|Integrations|Infrastructure|Quality|Skills|Decisions>
+Summary: <one sentence technical summary>
 <Additional Field>: <structured value>
 <List Field>:
 - <item>
 - <item>
 
-<Markdown body with useful detail.>
+<Optional intro Markdown.>
+
+### <Technical Detail Block>
+<Additional Field>: <structured value>
+<List Field>:
+- <item>
+
+<Optional Markdown body for the detail block.>
 ```
 
-The required section fields are `ID` and `Area`. Any additional fields are
-rendered as structured plan details. After user approval, the plan is treated
-as finalized project intent.
+The required section fields are `ID` and `Area`. `Summary` is optional and is
+rendered below the section title. Additional fields become structured plan
+details. Content before the first `###` heading is rendered as section intro
+Markdown, and each `###` heading becomes a readable detail block with its own
+optional structured fields and Markdown body.
+
+The project plan should store architecture, module boundaries, data contracts,
+integration details, implementation constraints, and explicit user technical
+decisions. Task progress belongs in `task-tree.yaml`, not in the project plan.
 
 ### Task tree file
 The task tree file is YAML and stores a real nested tree:
@@ -171,13 +187,13 @@ title: <project name> Task Tree
 project: <project name>
 version: 1
 updated: <YYYY-MM-DD>
-preferences: <optional single-line user project preferences>
+preferences: <optional single-line user technical preferences>
 
 tasks:
   - id: <stable-machine-id>
     title: <Human Task Title>
     status: <todo|in-progress|blocked|review|done|canceled>
-    area: <Project|Product|Frontend|Backend|Data|Infrastructure|Quality|Delivery|Docs>
+    area: <Project|Frontend|Backend|Data|Infrastructure|Quality|Delivery|Docs|Skills>
     dependsOn:
       - <optional dependency task ID>
     fields:
@@ -209,7 +225,7 @@ Privacy: public
 Type: concept
 Category: Authoring
 Tags: skills, ai, maintenance, workflow
-Summary: Neenja uses separate skills for initial planning, documentation bootstrapping, and ongoing documentation maintenance.
+Summary: Neenja uses separate skills for technical planning, documentation bootstrapping, and ongoing documentation maintenance.
 Related: platform-overview, documentation-file-format, internal-runtime-functions
 
 ### Installing the skills
@@ -220,14 +236,16 @@ npx skills add MesonWarrior/Neenja --all
 ```
 
 ### `neenja-init`
-`/neenja-init` is the project planning skill. Use it at the start of a
-project after the user describes what they want to build.
+`/neenja-init` is the technical project planning skill. Use it at the start of
+a project after the user describes what they want to build.
 
 The skill writes `.neenja/project-plan.md` in the structured `## Plan:` format
-and `.neenja/task-tree.yaml` as a nested YAML tree. It may store one optional
-single-line preferences value in each document. After writing both files, the
-skill asks the user to review what must be corrected before the plan and task
-tree are treated as final.
+and `.neenja/task-tree.yaml` as a nested YAML tree. The plan should capture
+architecture, module boundaries, contracts, integrations, constraints, and
+explicit user technical decisions rather than product strategy prose. It may
+store one optional single-line technical preferences value in each document.
+After writing both files, the skill asks the user to review what must be
+corrected before the plan and task tree are treated as final.
 
 ### `neenja-bootstrap`
 `/neenja-bootstrap` is the one-time documentation generation skill. It tells the
@@ -243,16 +261,20 @@ the agent writes that value into documentation frontmatter as `preferences:`.
 `.neenja/project-plan.md` and `.neenja/task-tree.yaml` when present, and update
 documentation before finishing when documentable behavior changed.
 
-The sync skill uses the task tree to orient work around relevant task status,
-parent tasks, and `dependsOn:` relationships. When work changes task progress,
-the agent should update the task status in `.neenja/task-tree.yaml`.
+The sync skill uses the technical plan for architecture constraints, module
+boundaries, data contracts, and user-specified implementation details. It uses
+the task tree to orient work around relevant task status, parent tasks, and
+`dependsOn:` relationships. When work changes task progress, the agent should
+update the task status in `.neenja/task-tree.yaml`. The plan should change only
+when approved architecture or durable technical constraints change.
 
 The sync skill reads saved `preferences:` frontmatter values when they exist
 and uses that guidance while changing canonical documents.
 
 ### Maintenance rules
 - keep canonical Neenja documents inside `.neenja/`
-- preserve stable concept IDs, plan section IDs, and task IDs
+- preserve stable concept IDs, plan section IDs, plan detail headings, and task
+  IDs
 - update the relevant frontmatter `updated` field whenever a document changes
 - prefer editing existing concepts, plan sections, or tasks over creating
   duplicates
@@ -367,9 +389,9 @@ Description: Renderer mode for a documentation concept body.
 #### Type: `FunctionField`
 Kind: object
 Definition: `{ label: string; value: string; items: string[] }`
-Description: Structured field captured from function, type, project-plan, or task blocks.
+Description: Structured field captured from function, type, project-plan, plan detail, or task blocks.
 Fields:
-- label: `string` - Original field name such as `Parameters`, `Fields`, or `Success Criteria`.
+- label: `string` - Original field name such as `Parameters`, `Fields`, `Source Files`, or `Success Criteria`.
 - value: `string` - Inline text stored on the same line as the field label.
 - items: `string[]` - List items collected under that field.
 
@@ -396,10 +418,21 @@ Description: Parsed `## Plan:` section from `.neenja/project-plan.md`.
 Fields:
 - id: `string` - Stable machine-readable section ID.
 - title: `string` - Human-readable section title.
-- area: `string` - Sidebar group such as `Project`, `Goal`, `Scope`, or `Delivery`.
+- area: `string` - Sidebar group such as `Architecture`, `Runtime`, `Data Contracts`, or `Quality`.
 - areaSlug: `string` - Normalized area key used by the UI.
+- summary: `string` - Optional section summary rendered below the section title and included in search.
 - fields: `FunctionField[]` - Additional structured plan fields.
-- contentBlocks: `ConceptContentBlock[]` - Markdown body content.
+- contentBlocks: `ConceptContentBlock[]` - Intro Markdown before the first plan detail block.
+- detailBlocks: `PlanDetailBlock[]` - Parsed `###` technical detail blocks owned by the section.
+
+#### Type: `PlanDetailBlock`
+Kind: object
+Description: Parsed `###` technical detail block inside a project-plan section.
+Fields:
+- id: `string` - Generated stable-enough block ID derived from the heading and uniqued within the section.
+- title: `string` - Human-readable detail block title.
+- fields: `FunctionField[]` - Structured fields at the top of the detail block.
+- contentBlocks: `ConceptContentBlock[]` - Markdown body content for the detail block.
 
 #### Type: `TaskNode`
 Kind: object
@@ -470,7 +503,7 @@ Fields:
 - slug: `"project-plan"` - Route segment for project plan pages.
 - label: `string` - Navbar label.
 - meta: `ProjectPlanMeta` - Frontmatter metadata without summary.
-- sections: `PlanSection[]` - Parsed plan sections.
+- sections: `PlanSection[]` - Parsed technical plan sections, including summaries and detail blocks.
 - areas: `PlanAreaGroup[]` - Sections grouped for sidebar navigation.
 - sectionsById: `Record<string, PlanSection>` - Plan sections keyed by ID.
 
@@ -515,15 +548,27 @@ The parser lives in `lib/documentation-file.ts`. It:
    `NEENJA_DOCUMENTS_PATH`, otherwise `${projectRoot}/.neenja`
 2. scans the folder for recognized filenames
 3. parses `documentation.md` with the concept parser
-4. parses `project-plan.md` with the plan-section parser
+4. parses `project-plan.md` with the technical plan-section parser
 5. parses `task-tree.yaml` with the YAML task-tree parser
 6. applies public/private filtering only to documentation concepts
-7. groups documentation concepts by category, plan sections by area, and tasks
-   by area
+7. groups documentation concepts by category, technical plan sections by area,
+   and tasks by area
 8. derives task graph edges, root task IDs, child IDs, reverse dependency IDs,
    status summaries, and progress
 9. builds a `DocumentCollection` for routing, navbar switching, search, and
    rendering
+
+### Project plan parsing
+The project-plan parser treats `## Plan:` as the section boundary and `###` as
+the detail-block boundary inside a section. It reads leading structured fields
+only until body Markdown starts, so a technical plan can mix compact fields,
+lists, and longer Markdown without forcing every detail into metadata.
+
+`Summary` is extracted into `PlanSection.summary`, `ID` and `Area` stay hidden
+from the rendered field grid, and additional leading fields render as
+structured details. Content before the first `###` heading becomes section
+intro Markdown. Each `###` detail block can also start with structured fields
+before its Markdown body.
 
 ### Legacy path
 `NEENJA_DOCUMENTATION_PATH` and CLI `--file` are supported for a single
@@ -575,7 +620,10 @@ Related: parser-pipeline, internal-runtime-functions, documentation-model-types
 - Task tree pages do not use a sidebar; the graph is the primary workspace.
 - Search is scoped to the active document.
 - Documentation search returns concepts, function entries, and type entries.
-- Project plan search returns plan sections.
+- Project plan search returns plan sections and searches section summaries,
+  structured fields, and detail blocks.
+- Project plan pages render section summaries, structured fields, intro
+  Markdown, and `###` detail blocks.
 - Task tree search returns tasks.
 - Task tree pages render a pannable, zoomable SVG graph with task statuses,
   decomposition edges, dependency edges, and a right-side detail drawer.
@@ -624,11 +672,30 @@ Behavior:
 #### Function: `parsePlanSection`
 Kind: function
 Signature: `parsePlanSection(block: string): PlanSection`
-Description: Parse one `## Plan:` block into a structured project plan section.
+Description: Parse one `## Plan:` block into a structured technical project-plan section.
 Behavior:
-- Reads `ID` and `Area`.
-- Keeps additional fields as structured plan details.
+- Reads `ID`, `Area`, and optional `Summary`.
+- Keeps additional leading fields as structured plan details.
+- Parses body content before the first `###` heading as intro Markdown.
+- Parses each `###` heading as a `PlanDetailBlock`.
+
+#### Function: `parsePlanDetailBlock`
+Kind: function
+Signature: `parsePlanDetailBlock(block: string, usedIds: Set<string>): PlanDetailBlock`
+Description: Parse one `###` technical detail block inside a project-plan section.
+Behavior:
+- Derives a unique block ID from the heading.
+- Keeps leading fields as structured detail data.
 - Parses the remaining body as Markdown content.
+
+#### Function: `parseLeadingReferenceFields`
+Kind: function
+Signature: `parseLeadingReferenceFields(lines: string[]): { fields: FunctionField[]; bodyStartIndex: number }`
+Description: Parse structured fields at the start of a plan section or detail block without consuming ordinary Markdown body content.
+Behavior:
+- Accepts technical field labels containing letters, digits, spaces, slash, ampersand, parentheses, underscore, or hyphen.
+- Stops when a non-field Markdown line starts.
+- Returns the index where body parsing should continue.
 
 #### Function: `parseYamlTaskNode`
 Kind: function
