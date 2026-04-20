@@ -1,6 +1,6 @@
 ---
 name: neenja-sync
-description: Use on every task in a Neenja-enabled repository. Read `.neenja/documentation.md` and, when present, `.neenja/project-plan.md` before work; update documentation before finishing whenever the task changed behavior that belongs in the canonical documentation. Respect saved frontmatter `preferences:` values when they exist.
+description: Use on every task in a Neenja-enabled repository. Read `.neenja/documentation.md` and, when present, `.neenja/project-plan.md` and `.neenja/task-tree.yaml` before work; align implementation with the task tree; update documentation before finishing whenever the task changed behavior that belongs in the canonical documentation. Respect saved `preferences:` values when they exist.
 ---
 
 # Neenja Sync
@@ -12,6 +12,7 @@ bootstrapped.
 
 - Repo-relative canonical path: `.neenja/documentation.md`
 - Optional project plan path: `.neenja/project-plan.md`
+- Optional task tree path: `.neenja/task-tree.yaml`
 - These files live inside `.neenja/`, alongside the build output.
 
 ## Documentation-first workflow
@@ -20,20 +21,30 @@ bootstrapped.
    planning, editing code, or answering questions about the project.
 2. If `./.neenja/project-plan.md` exists, read it too so implementation work
    aligns with the current project intent.
-3. Use the documentation and plan to build context about the architecture, workflows,
-   terminology, and important constraints.
-4. If either document frontmatter contains `preferences:`, follow those
+3. If `./.neenja/task-tree.yaml` exists, read it too and orient implementation
+   around the relevant task, its status, its parent task, and its dependency
+   edges.
+4. Use the documentation, plan, and task tree to build context about the
+   architecture, workflows, terminology, implementation order, and important
+   constraints.
+5. If any document frontmatter contains `preferences:`, follow those
    saved user preferences whenever you add, remove, reorganize, or rewrite
    project documentation.
-5. If the documentation conflicts with the code, treat the code as the current
+6. If the documentation conflicts with the code, treat the code as the current
    implementation and update the documentation before you finish the task.
-6. Complete the assigned task using the codebase and canonical Neenja documents
-   as context.
-7. Before you finish, decide whether your changes introduced or materially
+7. Complete the assigned task using the codebase and canonical Neenja documents
+   as context. When a task tree exists, prefer work that advances the relevant
+   unblocked task and respects `dependsOn:` relationships.
+8. Before you finish, decide whether your changes introduced or materially
    changed anything that belongs in the canonical documentation.
-8. If the answer is yes, update `./.neenja/documentation.md` in the same
+9. If the answer is yes, update `./.neenja/documentation.md` in the same
    task before your final response.
-9. If the answer is no, do not churn the documentation file just to touch it.
+10. If the task status changed because of your work, update
+    `./.neenja/task-tree.yaml` in the same task. Use `in-progress` while actively
+    implementing, `review` when work is ready for user review, `done` when the
+    task is complete, and `blocked` when a dependency or missing decision stops
+    progress.
+11. If the answer is no, do not churn the documentation file just to touch it.
 
 ## Required documentation file format
 
@@ -62,6 +73,39 @@ Related: concept-id-one, concept-id-two
 ```
 
 If there is no saved user preferences string, omit the `preferences:` line.
+
+## Required task tree file format
+
+When `./.neenja/task-tree.yaml` exists, preserve this YAML tree schema:
+
+```yaml
+title: <project name> Task Tree
+project: <project name>
+version: 1
+updated: <YYYY-MM-DD>
+preferences: <optional single-line user project preferences>
+
+tasks:
+  - id: <stable-machine-id>
+    title: <Human Task Title>
+    status: <todo|in-progress|blocked|review|done|canceled>
+    area: <Project|Product|Frontend|Backend|Data|Infrastructure|Quality|Delivery|Docs|other useful area>
+    dependsOn:
+      - <optional dependency task ID>
+    fields:
+      <Additional Field>:
+        - <item>
+    details: |-
+      <optional Markdown task detail, acceptance notes, or implementation hints>
+    children:
+      - id: <stable-machine-id>
+        title: <Human Subtask Title>
+        status: todo
+        area: <area>
+```
+
+Use nested `children:` for task decomposition and `dependsOn:` for graph
+dependencies between tasks. Do not add a task-tree `summary` field.
 
 ## Concept body rules
 
@@ -145,8 +189,12 @@ Fields:
 
 - Do not invent a project plan during sync unless the user asks for planning.
 - If the user is starting a project from a brief, use `/neenja-init`.
+- If the task tree does not exist yet, do not invent it during sync unless the
+  user asks for planning or task decomposition.
 
 ## Final rule
 
-Always read the canonical documentation file first, and always update it before
-finishing a task when you changed something that should be documented.
+Always read the canonical documentation file first. When a task tree exists,
+use it to guide implementation and update changed task statuses before
+finishing. Always update documentation before finishing a task when you changed
+something that should be documented.

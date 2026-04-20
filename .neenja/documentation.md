@@ -2,13 +2,13 @@
 title: Neenja Documentation
 project: Neenja
 version: 1
-updated: 2026-04-19
-summary: Neenja keeps AI-friendly project documents current and renders documentation plus project plans as a browsable reader.
+updated: 2026-04-20
+summary: Neenja keeps AI-friendly project documents current and renders documentation, project plans, and task trees as a browsable reader.
 ---
 
 # Neenja Documentation
 
-Neenja stores canonical project memory in Markdown files under `.neenja/` and
+Neenja stores canonical project memory in project files under `.neenja/` and
 turns those files into a reader UI for humans and coding agents.
 
 ## Concept: Platform Overview
@@ -17,7 +17,7 @@ Privacy: public
 Type: concept
 Category: Product
 Tags: product, overview, workflow
-Summary: Neenja reads a `.neenja/` documents folder and renders recognized Markdown documents as a local or static project documentation site.
+Summary: Neenja reads a `.neenja/` documents folder and renders recognized project documents as a local or static project documentation site.
 Related: documentation-file-format, prompt-workflow, cli-reference
 
 ### What it is
@@ -25,16 +25,17 @@ Neenja combines three things:
 
 - a `.neenja/` document folder
 - agent skills that create and maintain project documents
-- a reader UI that parses recognized Markdown files and exposes them as
+- a reader UI that parses recognized project files and exposes them as
   navigable project documentation
 
 The reader currently recognizes these document filenames:
 
 - `.neenja/documentation.md` for concept documentation
 - `.neenja/project-plan.md` for a structured project plan
+- `.neenja/task-tree.yaml` for a decomposed implementation task tree
 
-The document type is determined by filename. Unknown Markdown files in the
-folder are ignored by the reader.
+The document type is determined by filename. Unknown files in the folder are
+ignored by the reader.
 
 ### Typical usage
 1. Run `npx skills add MesonWarrior/Neenja --all`.
@@ -55,8 +56,12 @@ automatically on later tasks so documentation stays current.
   default, unless `--private` is passed.
 - Project plan documents are not privacy-filtered; every `## Plan:` section in
   the plan file is rendered.
+- Task tree documents are not privacy-filtered; every task in the YAML tree is
+  rendered in a fullscreen graph workspace with status, progress,
+  decomposition, and dependency links.
 - The header navbar switches between recognized document types.
-- The sidebar switches to the active document's own navigation model.
+- Documentation and project-plan pages use a sidebar. Task-tree pages use the
+  whole viewport as the graph workspace.
 
 ## Concept: Documentation File Format
 ID: documentation-file-format
@@ -64,7 +69,7 @@ Privacy: public
 Type: concept
 Category: Authoring
 Tags: format, markdown, schema, authoring
-Summary: Neenja uses filename-based Markdown document schemas for documentation and project plans inside `.neenja/`.
+Summary: Neenja uses filename-based document schemas for documentation, project plans, and YAML task trees inside `.neenja/`.
 Related: platform-overview, prompt-workflow, documentation-model-types
 
 ### Documents folder
@@ -79,6 +84,7 @@ The reader recognizes document type by filename:
 ```txt
 .neenja/documentation.md
 .neenja/project-plan.md
+.neenja/task-tree.yaml
 ```
 
 If `.neenja/documentation.md` is missing, Neenja can still fall back to the
@@ -159,6 +165,41 @@ The required section fields are `ID`, `Area`, and `Summary`. Any additional
 fields are rendered as structured plan details. After user approval, the plan
 is treated as finalized project intent.
 
+### Task tree file
+The task tree file is YAML and stores a real nested tree:
+
+```yaml
+title: <project name> Task Tree
+project: <project name>
+version: 1
+updated: <YYYY-MM-DD>
+preferences: <optional single-line user project preferences>
+
+tasks:
+  - id: <stable-machine-id>
+    title: <Human Task Title>
+    status: <todo|in-progress|blocked|review|done|canceled>
+    area: <Project|Product|Frontend|Backend|Data|Infrastructure|Quality|Delivery|Docs>
+    dependsOn:
+      - <optional dependency task ID>
+    fields:
+      Acceptance Notes:
+        - <item>
+    details: |-
+      <optional Markdown task detail>
+    children:
+      - id: <stable-machine-id>
+        title: <Human Subtask Title>
+        status: todo
+        area: <area>
+```
+
+Nested `children:` creates decomposition edges. `dependsOn:` creates dependency
+edges between tasks, including across different parents. The task tree does not
+store `summary`; task details belong in optional `details` or structured
+`fields`. The reader calculates progress from task statuses and treats
+`status: done` as completed work.
+
 ### Type links
 When a function signature or the type part of a `Parameters` or `Fields` list
 item uses the same type name as a documented `#### Type:` entry, the reader
@@ -184,10 +225,11 @@ npx skills add MesonWarrior/Neenja --all
 `/neenja-init` is the project planning skill. Use it at the start of a
 project after the user describes what they want to build.
 
-The skill writes `.neenja/project-plan.md` in the structured `## Plan:` format.
-It may store one optional single-line preferences value in the plan
-frontmatter. After writing the file, the skill asks the user to review what
-must be corrected before the plan is treated as final.
+The skill writes `.neenja/project-plan.md` in the structured `## Plan:` format
+and `.neenja/task-tree.yaml` as a nested YAML tree. It may store one optional
+single-line preferences value in each document. After writing both files, the
+skill asks the user to review what must be corrected before the plan and task
+tree are treated as final.
 
 ### `neenja-bootstrap`
 `/neenja-bootstrap` is the one-time documentation generation skill. It tells the
@@ -199,17 +241,23 @@ the agent writes that value into documentation frontmatter as `preferences:`.
 
 ### `neenja-sync`
 `neenja-sync` is the ongoing maintenance skill. It tells working agents to read
-`.neenja/documentation.md` at the start of each task and update it before
-finishing when documentable behavior changed.
+`.neenja/documentation.md` at the start of each task, read
+`.neenja/project-plan.md` and `.neenja/task-tree.yaml` when present, and update
+documentation before finishing when documentable behavior changed.
 
-The sync skill reads the saved documentation `preferences:` frontmatter value
-when it exists and uses that guidance while changing documentation.
+The sync skill uses the task tree to orient work around relevant task status,
+parent tasks, and `dependsOn:` relationships. When work changes task progress,
+the agent should update the task status in `.neenja/task-tree.yaml`.
+
+The sync skill reads saved `preferences:` frontmatter values when they exist
+and uses that guidance while changing canonical documents.
 
 ### Maintenance rules
 - keep canonical Neenja documents inside `.neenja/`
-- preserve stable concept IDs and plan section IDs
+- preserve stable concept IDs, plan section IDs, and task IDs
 - update the relevant frontmatter `updated` field whenever a document changes
-- prefer editing existing concepts or plan sections over creating duplicates
+- prefer editing existing concepts, plan sections, or tasks over creating
+  duplicates
 - keep public concepts usable as external-facing reference material
 - keep private concepts implementation-grounded and useful to maintainers and
   agents
@@ -236,7 +284,7 @@ Parameters:
 - `--public`: `boolean` - Restrict rendered documentation concepts to public concepts only.
 Behavior:
 - Resolves `.neenja/` by default.
-- Recognizes `documentation.md` and `project-plan.md` by filename.
+- Recognizes `documentation.md`, `project-plan.md`, and `task-tree.yaml` by filename.
 - Falls back to `./neenja.knowledge.md` when no folder documentation file exists.
 - Launches Astro in dev mode.
 - Defaults to showing the full documentation set, including private concepts.
@@ -255,6 +303,7 @@ Behavior:
 - Resolves `.neenja/` by default.
 - Defaults to the public documentation subset so generated static docs can be published safely.
 - Includes project plan routes whenever `.neenja/project-plan.md` exists.
+- Includes task tree routes whenever `.neenja/task-tree.yaml` exists.
 
 #### Function: `neenja build-github`
 Kind: cli command
@@ -274,7 +323,7 @@ Privacy: public
 Type: types
 Category: Authoring
 Tags: types, schema, model, renderer
-Summary: Neenja parses recognized Markdown files into a typed document collection that powers routing, navigation, search, and rendering.
+Summary: Neenja parses recognized project files into a typed document collection that powers routing, navigation, search, and rendering.
 Related: documentation-file-format, internal-runtime-functions
 
 These are the main structured values used by the parser and reader.
@@ -282,18 +331,18 @@ These are the main structured values used by the parser and reader.
 #### Type: `DocumentMeta`
 Kind: object
 Definition: `{ title: string; project: string; version: string; updated: string; summary: string; preferences?: string }`
-Description: Frontmatter metadata exposed by every reader document.
+Description: Metadata exposed by every reader document.
 Fields:
 - title: `string` - Rendered document title.
 - project: `string` - Project name from frontmatter.
 - version: `string` - Schema version marker stored in the file.
 - updated: `string` - Last canonical document update date.
-- summary: `string` - Short description shown in the reader shell.
+- summary: `string` - Short description shown in the reader shell; task trees receive a parser default because YAML task trees do not store summary.
 - preferences: `string | undefined` - Optional single-line user preferences stored by skills.
 
 #### Type: `DocumentKind`
 Kind: union
-Definition: `"documentation" | "project-plan"`
+Definition: `"documentation" | "project-plan" | "task-tree"`
 Description: Filename-derived document type used by the reader.
 
 #### Type: `DocumentationVisibility`
@@ -309,7 +358,7 @@ Description: Renderer mode for a documentation concept body.
 #### Type: `FunctionField`
 Kind: object
 Definition: `{ label: string; value: string; items: string[] }`
-Description: Structured field captured from function, type, or project-plan blocks.
+Description: Structured field captured from function, type, project-plan, or task blocks.
 Fields:
 - label: `string` - Original field name such as `Parameters`, `Fields`, or `Success Criteria`.
 - value: `string` - Inline text stored on the same line as the field label.
@@ -344,6 +393,53 @@ Fields:
 - fields: `FunctionField[]` - Additional structured plan fields.
 - contentBlocks: `ConceptContentBlock[]` - Markdown body content.
 
+#### Type: `TaskNode`
+Kind: object
+Description: Parsed task entry from `.neenja/task-tree.yaml`.
+Fields:
+- id: `string` - Stable machine-readable task ID.
+- title: `string` - Human-readable task title.
+- status: `string` - Normalized status slug.
+- statusLabel: `string` - Human-readable status label.
+- statusSlug: `string` - CSS-safe status key used by the reader.
+- area: `string` - Sidebar group such as `Frontend`, `Backend`, `Quality`, or `Docs`.
+- areaSlug: `string` - Normalized area key used by the UI.
+- parentId: `string | undefined` - Derived parent task ID from YAML nesting.
+- dependsOn: `string[]` - Task IDs that must be completed or unblocked first.
+- childrenIds: `string[]` - Child task IDs derived from nested `children`.
+- blockingTaskIds: `string[]` - Task IDs that depend on this task.
+- depth: `number` - Derived nesting depth in the decomposition tree.
+- fields: `FunctionField[]` - Additional structured task fields.
+- contentBlocks: `ConceptContentBlock[]` - Markdown body content.
+
+#### Type: `TaskGraphEdge`
+Kind: object
+Definition: `{ from: string; to: string; kind: "decomposition" | "dependency" }`
+Description: Derived graph edge between task IDs.
+Fields:
+- from: `string` - Source task ID.
+- to: `string` - Target task ID.
+- kind: `"decomposition" | "dependency"` - Edge meaning.
+
+#### Type: `TaskProgressSummary`
+Kind: object
+Definition: `{ total: number; done: number; percent: number }`
+Description: Completion metrics calculated from task statuses.
+Fields:
+- total: `number` - Number of parsed tasks.
+- done: `number` - Number of tasks whose normalized status is `done`.
+- percent: `number` - Rounded completion percentage.
+
+#### Type: `TaskStatusSummary`
+Kind: object
+Definition: `{ status: string; label: string; count: number; percent: number }`
+Description: Status bucket used by the task tree progress UI.
+Fields:
+- status: `string` - Normalized status slug.
+- label: `string` - Human-readable status label.
+- count: `number` - Number of tasks in this status.
+- percent: `number` - Rounded share of all tasks.
+
 #### Type: `DocumentationDocument`
 Kind: object
 Description: Parsed documentation payload consumed by the reader shell.
@@ -369,6 +465,22 @@ Fields:
 - sections: `PlanSection[]` - Parsed plan sections.
 - areas: `PlanAreaGroup[]` - Sections grouped for sidebar navigation.
 - sectionsById: `Record<string, PlanSection>` - Plan sections keyed by ID.
+
+#### Type: `TaskTreeDocument`
+Kind: object
+Description: Parsed task tree payload consumed by the reader shell.
+Fields:
+- kind: `"task-tree"` - Document discriminator.
+- slug: `"task-tree"` - Route segment for task tree pages.
+- label: `string` - Navbar label.
+- meta: `DocumentMeta` - Frontmatter metadata.
+- tasks: `TaskNode[]` - Parsed tasks in document order.
+- areas: `TaskAreaGroup[]` - Tasks grouped for sidebar navigation.
+- tasksById: `Record<string, TaskNode>` - Tasks keyed by ID.
+- rootTaskIds: `string[]` - Root task IDs used to render the decomposition graph.
+- edges: `TaskGraphEdge[]` - Parent and dependency edges in the task graph.
+- statusSummary: `TaskStatusSummary[]` - Task counts grouped by status.
+- progress: `TaskProgressSummary` - Total, done count, and completion percentage.
 
 #### Type: `DocumentCollection`
 Kind: object
@@ -396,9 +508,13 @@ The parser lives in `lib/documentation-file.ts`. It:
 2. scans the folder for recognized filenames
 3. parses `documentation.md` with the concept parser
 4. parses `project-plan.md` with the plan-section parser
-5. applies public/private filtering only to documentation concepts
-6. groups documentation concepts by category and plan sections by area
-7. builds a `DocumentCollection` for routing, navbar switching, search, and
+5. parses `task-tree.yaml` with the YAML task-tree parser
+6. applies public/private filtering only to documentation concepts
+7. groups documentation concepts by category, plan sections by area, and tasks
+   by area
+8. derives task graph edges, root task IDs, child IDs, reverse dependency IDs,
+   status summaries, and progress
+9. builds a `DocumentCollection` for routing, navbar switching, search, and
    rendering
 
 ### Legacy path
@@ -438,6 +554,9 @@ Related: parser-pipeline, internal-runtime-functions, documentation-model-types
 - `/documentation/:conceptId/` renders a documentation concept.
 - `/project-plan/` renders the first project plan section.
 - `/project-plan/:sectionId/` renders a project plan section.
+- `/task-tree/` renders the fullscreen task graph workspace.
+- `/task-tree/:taskId/` renders the fullscreen task graph workspace with the
+  selected task drawer open.
 - Function and type entries use hash anchors under the owning documentation
   concept route.
 
@@ -445,9 +564,13 @@ Related: parser-pipeline, internal-runtime-functions, documentation-model-types
 - The header navbar lists every recognized document in the collection.
 - The sidebar shows documentation categories for documentation pages.
 - The sidebar shows project plan areas for project plan pages.
+- Task tree pages do not use a sidebar; the graph is the primary workspace.
 - Search is scoped to the active document.
 - Documentation search returns concepts, function entries, and type entries.
 - Project plan search returns plan sections.
+- Task tree search returns tasks.
+- Task tree pages render a pannable, zoomable SVG graph with task statuses,
+  decomposition edges, dependency edges, and a right-side detail drawer.
 - Inline type references inside function and type cards link back to the
   owning `TypeReferenceTarget`.
 
@@ -470,7 +593,7 @@ Description: Load all recognized Neenja documents and return the full reader col
 Behavior:
 - Resolves the documents directory.
 - Reads recognized document files.
-- Parses documentation and project plan documents.
+- Parses documentation, project plan, and task tree documents.
 - Builds `documents`, `documentsBySlug`, and `defaultDocument`.
 
 #### Function: `readDocumentationDocument`
@@ -498,6 +621,17 @@ Behavior:
 - Reads `ID`, `Area`, and `Summary`.
 - Keeps additional fields as structured plan details.
 - Parses the remaining body as Markdown content.
+
+#### Function: `parseYamlTaskNode`
+Kind: function
+Signature: `parseYamlTaskNode(rawTask: RawTaskNode, parentId: string | undefined, usedIds: Set<string>): { task: TaskNode; children: RawTaskNode[] }`
+Description: Parse one YAML task object into a task node before derived graph relationships are applied.
+Behavior:
+- Reads `id`, `title`, `status`, `area`, `dependsOn`, `fields`, `details`,
+  and nested `children`.
+- Normalizes status aliases such as `doing` to `in-progress` and `completed` to `done`.
+- Keeps additional fields as structured task details.
+- Parses `details` as Markdown content.
 
 #### Function: `resolveDocumentDirectoryPath`
 Kind: function

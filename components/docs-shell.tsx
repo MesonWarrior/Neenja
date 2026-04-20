@@ -1,5 +1,9 @@
-import type { MouseEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import type {
+  MouseEvent,
+  PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent,
+} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, LockKeyhole, Menu, Search, X } from "./icons";
 import {
   FunctionReferenceSection,
@@ -16,6 +20,8 @@ import type {
   PlanSection,
   ProjectPlanDocument,
   ReaderDocument,
+  TaskNode,
+  TaskTreeDocument,
 } from "../lib/documentation-file";
 
 const pendingEntryScrollStorageKey = "neenja-pending-entry-scroll";
@@ -75,6 +81,10 @@ function isDocumentationDocument(document: ReaderDocument): document is Document
 
 function isProjectPlanDocument(document: ReaderDocument): document is ProjectPlanDocument {
   return document.kind === "project-plan";
+}
+
+function isTaskTreeDocument(document: ReaderDocument): document is TaskTreeDocument {
+  return document.kind === "task-tree";
 }
 
 function getDocumentGroupKey(documentSlug: string, groupSlug: string) {
@@ -167,6 +177,28 @@ function planSectionMatchesSearch(section: PlanSection, query: string) {
       .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
       .join("\n"),
     section.contentBlocks.map((block) => block.content).join("\n"),
+  ]
+    .join("\n")
+    .toLowerCase();
+
+  return haystack.includes(query);
+}
+
+function taskMatchesSearch(task: TaskNode, query: string) {
+  if (!query) {
+    return true;
+  }
+
+  const haystack = [
+    task.title,
+    task.area,
+    task.statusLabel,
+    task.parentId ?? "",
+    task.dependsOn.join(" "),
+    task.fields
+      .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
+      .join("\n"),
+    task.contentBlocks.map((block) => block.content).join("\n"),
   ]
     .join("\n")
     .toLowerCase();
@@ -289,6 +321,600 @@ function PlanFields({ fields }: { fields: FunctionField[] }) {
   );
 }
 
+function TaskStatusPill({
+  task,
+  compact = false,
+}: {
+  task: TaskNode;
+  compact?: boolean;
+}) {
+  return (
+    <span className={`task-status-pill status-${task.statusSlug}${compact ? " compact" : ""}`}>
+      {task.statusLabel}
+    </span>
+  );
+}
+
+function TaskTreeProgress({ document }: { document: TaskTreeDocument }) {
+  return (
+    <div className="task-progress-panel">
+      <div className="task-progress-topline">
+        <span className="task-progress-label">Progress</span>
+        <strong>{document.progress.percent}%</strong>
+      </div>
+      <div
+        className="task-progress-track"
+        role="progressbar"
+        aria-label="Task completion progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={document.progress.percent}
+      >
+        <span style={{ width: `${document.progress.percent}%` }} />
+      </div>
+      <div className="task-status-summary" aria-label="Task status counts">
+        {document.statusSummary.map((statusSummary) => (
+          <span
+            key={statusSummary.status}
+            className={`task-status-count status-${statusSummary.status}`}
+          >
+            <span>{statusSummary.label}</span>
+            <strong>{statusSummary.count}</strong>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TaskLinkList({
+  basePath,
+  document,
+  label,
+  taskIds,
+}: {
+  basePath: string;
+  document: TaskTreeDocument;
+  label: string;
+  taskIds: string[];
+}) {
+  const tasks = taskIds
+    .map((taskId) => document.tasksById[taskId])
+    .filter((task): task is TaskNode => Boolean(task));
+
+  if (tasks.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="task-relation-group">
+      <dt>{label}</dt>
+      <dd>
+        <span className="task-relation-links">
+          {tasks.map((task) => (
+            <a key={task.id} href={getDocumentEntryHref(basePath, document.slug, task.id)}>
+              {task.title}
+            </a>
+          ))}
+        </span>
+      </dd>
+    </div>
+  );
+}
+
+function TaskRelations({
+  basePath,
+  document,
+  task,
+}: {
+  basePath: string;
+  document: TaskTreeDocument;
+  task: TaskNode;
+}) {
+  const relationGroups = [
+    task.parentId ? [task.parentId] : [],
+    task.childrenIds,
+    task.dependsOn,
+    task.blockingTaskIds,
+  ];
+  const hasRelations = relationGroups.some((group) => group.length > 0);
+
+  if (!hasRelations) {
+    return null;
+  }
+
+  return (
+    <dl className="task-relations">
+      <TaskLinkList
+        basePath={basePath}
+        document={document}
+        label="Parent"
+        taskIds={task.parentId ? [task.parentId] : []}
+      />
+      <TaskLinkList
+        basePath={basePath}
+        document={document}
+        label="Subtasks"
+        taskIds={task.childrenIds}
+      />
+      <TaskLinkList
+        basePath={basePath}
+        document={document}
+        label="Depends on"
+        taskIds={task.dependsOn}
+      />
+      <TaskLinkList
+        basePath={basePath}
+        document={document}
+        label="Blocks"
+        taskIds={task.blockingTaskIds}
+      />
+    </dl>
+  );
+}
+
+const graphNodeWidth = 260;
+const graphNodeHeight = 92;
+const graphLevelGap = 360;
+const graphSiblingGap = 34;
+const graphRootGap = 74;
+
+type TaskGraphPosition = {
+  x: number;
+  y: number;
+};
+
+function buildTaskGraphLayout(document: TaskTreeDocument) {
+  const positions: Record<string, TaskGraphPosition> = {};
+  let cursorY = 0;
+
+  const placeTask = (taskId: string, depth: number, seenIds = new Set<string>()) => {
+    if (seenIds.has(taskId)) {
+      return cursorY;
+    }
+
+    const task = document.tasksById[taskId];
+
+    if (!task) {
+      return cursorY;
+    }
+
+    const nextSeenIds = new Set(seenIds);
+    nextSeenIds.add(taskId);
+    const childIds = task.childrenIds.filter((childId) => document.tasksById[childId]);
+    const startY = cursorY;
+
+    if (childIds.length === 0) {
+      positions[taskId] = {
+        x: depth * graphLevelGap,
+        y: cursorY,
+      };
+      cursorY += graphNodeHeight + graphSiblingGap;
+      return positions[taskId].y;
+    }
+
+    childIds.forEach((childId) => {
+      placeTask(childId, depth + 1, nextSeenIds);
+    });
+
+    const endY = cursorY - graphSiblingGap - graphNodeHeight;
+    positions[taskId] = {
+      x: depth * graphLevelGap,
+      y: startY + Math.max(0, endY - startY) / 2,
+    };
+
+    return positions[taskId].y;
+  };
+
+  document.rootTaskIds.forEach((rootTaskId, index) => {
+    if (index > 0) {
+      cursorY += graphRootGap;
+    }
+
+    placeTask(rootTaskId, 0);
+  });
+
+  const nodes = document.tasks
+    .filter((task) => positions[task.id])
+    .map((task) => ({
+      task,
+      ...positions[task.id],
+    }));
+  const maxX = nodes.reduce((current, node) => Math.max(current, node.x), 0);
+  const maxY = nodes.reduce((current, node) => Math.max(current, node.y), 0);
+
+  return {
+    nodes,
+    positions,
+    width: maxX + graphNodeWidth,
+    height: maxY + graphNodeHeight,
+  };
+}
+
+function getGraphCurvePath(
+  from: TaskGraphPosition,
+  to: TaskGraphPosition,
+  {
+    fromRight = true,
+    toLeft = true,
+  }: {
+    fromRight?: boolean;
+    toLeft?: boolean;
+  } = {},
+) {
+  const startX = from.x + (fromRight ? graphNodeWidth : graphNodeWidth / 2);
+  const startY = from.y + graphNodeHeight / 2;
+  const endX = to.x + (toLeft ? 0 : graphNodeWidth / 2);
+  const endY = to.y + graphNodeHeight / 2;
+  const controlOffset = Math.max(80, Math.abs(endX - startX) / 2);
+
+  return [
+    `M ${startX} ${startY}`,
+    `C ${startX + controlOffset} ${startY}`,
+    `${endX - controlOffset} ${endY}`,
+    `${endX} ${endY}`,
+  ].join(" ");
+}
+
+function TaskGraphWorkspace({
+  basePath,
+  document,
+  selectedTask,
+  onSelectTask,
+  onCloseTask,
+}: {
+  basePath: string;
+  document: TaskTreeDocument;
+  selectedTask?: TaskNode;
+  onSelectTask: (taskId: string) => void;
+  onCloseTask: () => void;
+}) {
+  const graph = useMemo(() => buildTaskGraphLayout(document), [document]);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const isPanningRef = useRef(false);
+  const lastPointerRef = useRef({ x: 0, y: 0 });
+  const [viewportSize, setViewportSize] = useState({ width: 1, height: 1 });
+  const [transform, setTransform] = useState({ x: 80, y: 80, scale: 1 });
+  const decompositionEdges = document.edges.filter((edge) => edge.kind === "decomposition");
+  const dependencyEdges = document.edges.filter((edge) => edge.kind === "dependency");
+
+  const fitGraph = () => {
+    const padding = 96;
+    const scale = Math.min(
+      1.15,
+      Math.max(
+        0.35,
+        Math.min(
+          (viewportSize.width - padding) / Math.max(graph.width, 1),
+          (viewportSize.height - padding) / Math.max(graph.height, 1),
+        ),
+      ),
+    );
+
+    setTransform({
+      x: Math.max(32, (viewportSize.width - graph.width * scale) / 2),
+      y: Math.max(32, (viewportSize.height - graph.height * scale) / 2),
+      scale,
+    });
+  };
+
+  useEffect(() => {
+    const node = viewportRef.current;
+
+    if (!node) {
+      return;
+    }
+
+    const syncSize = () => {
+      const rect = node.getBoundingClientRect();
+      setViewportSize({
+        width: rect.width || 1,
+        height: rect.height || 1,
+      });
+    };
+    const observer = new ResizeObserver(syncSize);
+    observer.observe(node);
+    syncSize();
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    fitGraph();
+  }, [graph.height, graph.width, viewportSize.height, viewportSize.width]);
+
+  const zoomAt = (nextScale: number, originX = viewportSize.width / 2, originY = viewportSize.height / 2) => {
+    setTransform((current) => {
+      const scale = Math.min(2.2, Math.max(0.28, nextScale));
+      const graphX = (originX - current.x) / current.scale;
+      const graphY = (originY - current.y) / current.scale;
+
+      return {
+        x: originX - graphX * scale,
+        y: originY - graphY * scale,
+        scale,
+      };
+    });
+  };
+
+  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const direction = event.deltaY > 0 ? 0.88 : 1.12;
+    zoomAt(
+      transform.scale * direction,
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+    );
+  };
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    isPanningRef.current = true;
+    lastPointerRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isPanningRef.current) {
+      return;
+    }
+
+    const dx = event.clientX - lastPointerRef.current.x;
+    const dy = event.clientY - lastPointerRef.current.y;
+    lastPointerRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+    };
+
+    setTransform((current) => ({
+      ...current,
+      x: current.x + dx,
+      y: current.y + dy,
+    }));
+  };
+
+  const stopPanning = (event: ReactPointerEvent<HTMLDivElement>) => {
+    isPanningRef.current = false;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const selectTask = (taskId: string) => {
+    onSelectTask(taskId);
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.history.pushState(
+      window.history.state,
+      "",
+      getDocumentEntryHref(basePath, document.slug, taskId),
+    );
+  };
+
+  return (
+    <main className="task-workspace">
+      <div className="task-workspace-toolbar">
+        <TaskTreeProgress document={document} />
+        <div className="task-workspace-controls" aria-label="Graph controls">
+          <button
+            type="button"
+            className="task-control-button"
+            title="Zoom out"
+            aria-label="Zoom out"
+            onClick={() => zoomAt(transform.scale * 0.82)}
+          >
+            -
+          </button>
+          <button
+            type="button"
+            className="task-control-button"
+            title="Reset view"
+            aria-label="Reset view"
+            onClick={fitGraph}
+          >
+            1:1
+          </button>
+          <button
+            type="button"
+            className="task-control-button"
+            title="Zoom in"
+            aria-label="Zoom in"
+            onClick={() => zoomAt(transform.scale * 1.18)}
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <div
+        ref={viewportRef}
+        className="task-graph-viewport"
+        onWheel={handleWheel}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={stopPanning}
+        onPointerCancel={stopPanning}
+      >
+        <svg
+          className="task-graph-canvas"
+          width="100%"
+          height="100%"
+          role="img"
+          aria-label="Task graph"
+        >
+          <defs>
+            <marker
+              id="task-edge-arrow"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" />
+            </marker>
+            <marker
+              id="task-dependency-arrow"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" />
+            </marker>
+          </defs>
+          <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.scale})`}>
+            <g className="task-graph-edges">
+              {decompositionEdges.map((edge) => {
+                const from = graph.positions[edge.from];
+                const to = graph.positions[edge.to];
+
+                if (!from || !to) {
+                  return null;
+                }
+
+                return (
+                  <path
+                    key={`${edge.kind}-${edge.from}-${edge.to}`}
+                    className="task-edge decomposition"
+                    d={getGraphCurvePath(from, to)}
+                  />
+                );
+              })}
+
+              {dependencyEdges.map((edge) => {
+                const from = graph.positions[edge.from];
+                const to = graph.positions[edge.to];
+
+                if (!from || !to) {
+                  return null;
+                }
+
+                return (
+                  <path
+                    key={`${edge.kind}-${edge.from}-${edge.to}`}
+                    className="task-edge dependency"
+                    d={getGraphCurvePath(from, to)}
+                  />
+                );
+              })}
+            </g>
+
+            <g className="task-graph-nodes">
+              {graph.nodes.map((node) => (
+                <foreignObject
+                  key={node.task.id}
+                  x={node.x}
+                  y={node.y}
+                  width={graphNodeWidth}
+                  height={graphNodeHeight}
+                >
+                  <button
+                    type="button"
+                    className={
+                      selectedTask?.id === node.task.id
+                        ? `task-graph-card active status-${node.task.statusSlug}`
+                        : `task-graph-card status-${node.task.statusSlug}`
+                    }
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={() => selectTask(node.task.id)}
+                  >
+                    <span className="task-node-title">{node.task.title}</span>
+                    <span className="task-node-footer">
+                      <TaskStatusPill task={node.task} compact />
+                      <span>{node.task.area}</span>
+                    </span>
+                  </button>
+                </foreignObject>
+              ))}
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      {selectedTask ? (
+        <TaskDetailDrawer
+          basePath={basePath}
+          document={document}
+          task={selectedTask}
+          onClose={onCloseTask}
+        />
+      ) : null}
+    </main>
+  );
+}
+
+function TaskDetailDrawer({
+  basePath,
+  document,
+  task,
+  onClose,
+}: {
+  basePath: string;
+  document: TaskTreeDocument;
+  task: TaskNode;
+  onClose: () => void;
+}) {
+  return (
+    <aside className="task-detail-drawer" aria-label="Task details">
+      <article className="reader-card task-detail-card">
+        <header className="reader-header task-detail-header">
+          <button
+            type="button"
+            className="icon-button task-detail-close"
+            aria-label="Close task details"
+            onClick={onClose}
+          >
+            <X size={18} />
+          </button>
+
+          <p className="eyebrow">{task.area}</p>
+          <h2>{task.title}</h2>
+
+          <div className="task-header-meta">
+            <TaskStatusPill task={task} />
+            <span>{task.childrenIds.length} subtasks</span>
+            <span>{task.dependsOn.length} dependencies</span>
+          </div>
+
+          <PlanFields fields={task.fields} />
+        </header>
+
+        <div className="reader-body task-detail-body">
+          <TaskRelations
+            basePath={basePath}
+            document={document}
+            task={task}
+          />
+
+          {task.contentBlocks.map((block, index) => (
+            <MarkdownContent
+              key={`${task.id}-markdown-${index}`}
+              content={block.content}
+            />
+          ))}
+        </div>
+      </article>
+    </aside>
+  );
+}
+
 export function DocsShell({
   collection,
   selectedDocumentSlug,
@@ -308,6 +934,7 @@ export function DocsShell({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [activeEntryId, setActiveEntryId] = useState("");
+  const [selectedTaskId, setSelectedTaskId] = useState(selectedEntryId ?? "");
   const [isEntryItemLinkActiveDismissed, setIsEntryItemLinkActiveDismissed] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dismissEntryItemLinkOnUserScrollRef = useRef(false);
@@ -322,6 +949,12 @@ export function DocsShell({
     isProjectPlanDocument(activeDocument)
       ? activeDocument.sectionsById[selectedEntryId ?? ""] ?? activeDocument.sections[0]
       : undefined;
+  const selectedTask =
+    isTaskTreeDocument(activeDocument)
+      ? selectedTaskId
+        ? activeDocument.tasksById[selectedTaskId]
+        : undefined
+      : undefined;
   const visibleRelatedConcepts =
     isDocumentationDocument(activeDocument) && selectedConcept
       ? selectedConcept.related
@@ -329,10 +962,11 @@ export function DocsShell({
           .filter((relatedConcept): relatedConcept is Concept => Boolean(relatedConcept))
       : [];
   const selectedGroupSlug =
-    selectedConcept?.categorySlug ?? selectedPlanSection?.areaSlug;
+    selectedConcept?.categorySlug ?? selectedPlanSection?.areaSlug ?? selectedTask?.areaSlug;
   const query = normalize(search);
   const documentationDocument = isDocumentationDocument(activeDocument) ? activeDocument : undefined;
   const projectPlanDocument = isProjectPlanDocument(activeDocument) ? activeDocument : undefined;
+  const taskTreeDocument = isTaskTreeDocument(activeDocument) ? activeDocument : undefined;
   const conceptSearchResults = documentationDocument
     ? documentationDocument.concepts.filter((concept) => conceptMatchesSearch(concept, query))
     : [];
@@ -360,6 +994,9 @@ export function DocsShell({
       : [];
   const planSearchResults = projectPlanDocument
     ? projectPlanDocument.sections.filter((section) => planSectionMatchesSearch(section, query))
+    : [];
+  const taskSearchResults = taskTreeDocument
+    ? taskTreeDocument.tasks.filter((task) => taskMatchesSearch(task, query))
     : [];
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const groups = isDocumentationDocument(activeDocument)
@@ -389,6 +1026,7 @@ export function DocsShell({
     setIsSidebarOpen(false);
     setIsSearchOpen(false);
     setSearch("");
+    setSelectedTaskId(isTaskTreeDocument(activeDocument) ? selectedEntryId ?? "" : "");
   }, [selectedDocumentSlug, selectedEntryId]);
 
   useEffect(() => {
@@ -637,7 +1275,8 @@ export function DocsShell({
     functionSearchResults.length > 0 ||
     typeSearchResults.length > 0 ||
     conceptSearchResults.length > 0 ||
-    planSearchResults.length > 0;
+    planSearchResults.length > 0 ||
+    taskSearchResults.length > 0;
   const renderDocumentNavigation = (className: string) =>
     collection.documents.length > 1 ? (
       <nav className={className} aria-label="Documents">
@@ -656,6 +1295,19 @@ export function DocsShell({
         ))}
       </nav>
     ) : null;
+  const closeTaskDetails = () => {
+    setSelectedTaskId("");
+
+    if (typeof window === "undefined" || !taskTreeDocument) {
+      return;
+    }
+
+    window.history.pushState(
+      window.history.state,
+      "",
+      getDocumentHref(basePath, taskTreeDocument.slug),
+    );
+  };
 
   return (
     <>
@@ -715,6 +1367,15 @@ export function DocsShell({
         </div>
       </header>
 
+      {taskTreeDocument ? (
+        <TaskGraphWorkspace
+          basePath={basePath}
+          document={taskTreeDocument}
+          selectedTask={selectedTask}
+          onSelectTask={setSelectedTaskId}
+          onCloseTask={closeTaskDetails}
+        />
+      ) : (
       <div className="docs-layout">
         <div
           className={isSidebarOpen ? "sidebar-backdrop visible" : "sidebar-backdrop"}
@@ -910,6 +1571,7 @@ export function DocsShell({
                   );
                 })
               : null}
+
           </section>
         </aside>
 
@@ -1022,6 +1684,7 @@ export function DocsShell({
           ) : null}
         </section>
       </div>
+      )}
 
       {isSearchOpen ? (
         <div className="search-dialog-layer" role="presentation">
@@ -1182,6 +1845,46 @@ export function DocsShell({
                           <strong className="search-result-title">{section.title}</strong>
                           <span className="search-result-summary">
                             {section.summary || "Open this plan section."}
+                          </span>
+                        </a>
+                      ))}
+                    </section>
+                  ) : null}
+
+                  {taskSearchResults.length > 0 ? (
+                    <section className="search-results-group" aria-label="Matching tasks">
+                      {query ? <p className="search-results-heading">Task tree</p> : null}
+
+                      {taskSearchResults.map((task) => (
+                        <a
+                          key={task.id}
+                          href={getDocumentEntryHref(basePath, activeDocument.slug, task.id)}
+                          className={
+                            selectedTask?.id === task.id
+                              ? "search-result-card active"
+                              : "search-result-card"
+                          }
+                          onClick={(event) => {
+                            if (!taskTreeDocument) {
+                              closeSearch();
+                              return;
+                            }
+
+                            event.preventDefault();
+                            setSelectedTaskId(task.id);
+                            closeSearch();
+                            window.history.pushState(
+                              window.history.state,
+                              "",
+                              getDocumentEntryHref(basePath, taskTreeDocument.slug, task.id),
+                            );
+                          }}
+                        >
+                          <span className="search-result-eyebrow">{task.area}</span>
+                          <strong className="search-result-title">{task.title}</strong>
+                          <span className="search-result-parent">{task.statusLabel}</span>
+                          <span className="search-result-summary">
+                            {task.content || "Open this task."}
                           </span>
                         </a>
                       ))}

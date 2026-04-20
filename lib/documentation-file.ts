@@ -1,17 +1,21 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { parse as parseYaml } from "yaml";
 
 export const defaultDocumentsDirectoryName = ".neenja";
 export const documentationDocumentFileName = "documentation.md";
 export const projectPlanDocumentFileName = "project-plan.md";
+export const taskTreeDocumentFileName = "task-tree.yaml";
+export const taskTreeYmlDocumentFileName = "task-tree.yml";
 export const defaultDocumentationDocumentFileName = `${defaultDocumentsDirectoryName}/${documentationDocumentFileName}`;
 export const legacyRootDocumentationDocumentFileName = "neenja.knowledge.md";
 const documentationPathEnvName = "NEENJA_DOCUMENTATION_PATH";
 
 export type DocumentationVisibility = "public" | "private";
-export type DocumentKind = "documentation" | "project-plan";
+export type DocumentKind = "documentation" | "project-plan" | "task-tree";
 export type ConceptPrivacy = "public" | "private";
 export type ConceptKind = "concept" | "functions" | "types";
+export type TaskGraphEdgeKind = "decomposition" | "dependency";
 
 export type FunctionField = {
   label: string;
@@ -122,7 +126,65 @@ export type ProjectPlanDocument = {
   sectionsById: Record<string, PlanSection>;
 };
 
-export type ReaderDocument = DocumentationDocument | ProjectPlanDocument;
+export type TaskNode = {
+  id: string;
+  title: string;
+  status: string;
+  statusLabel: string;
+  statusSlug: string;
+  area: string;
+  areaSlug: string;
+  parentId?: string;
+  dependsOn: string[];
+  childrenIds: string[];
+  blockingTaskIds: string[];
+  depth: number;
+  fields: FunctionField[];
+  content: string;
+  contentBlocks: ConceptContentBlock[];
+};
+
+export type TaskAreaGroup = {
+  name: string;
+  slug: string;
+  tasks: TaskNode[];
+};
+
+export type TaskGraphEdge = {
+  from: string;
+  to: string;
+  kind: TaskGraphEdgeKind;
+};
+
+export type TaskStatusSummary = {
+  status: string;
+  label: string;
+  count: number;
+  percent: number;
+};
+
+export type TaskProgressSummary = {
+  total: number;
+  done: number;
+  percent: number;
+};
+
+export type TaskTreeDocument = {
+  kind: "task-tree";
+  slug: "task-tree";
+  label: string;
+  path: string;
+  meta: DocumentMeta;
+  tasks: TaskNode[];
+  areas: TaskAreaGroup[];
+  tasksById: Record<string, TaskNode>;
+  rootTaskIds: string[];
+  edges: TaskGraphEdge[];
+  statusSummary: TaskStatusSummary[];
+  progress: TaskProgressSummary;
+};
+
+export type ReaderDocument = DocumentationDocument | ProjectPlanDocument | TaskTreeDocument;
 
 export type DocumentCollection = {
   visibility: DocumentationVisibility;
@@ -739,6 +801,411 @@ function parseProjectPlanDocument(raw: string, documentPath: string): ProjectPla
   };
 }
 
+function normalizeTaskStatus(value: string) {
+  const normalizedValue = value
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-");
+
+  if (!normalizedValue) {
+    return "todo";
+  }
+
+  const aliases: Record<string, string> = {
+    "to-do": "todo",
+    open: "todo",
+    planned: "todo",
+    doing: "in-progress",
+    active: "in-progress",
+    progress: "in-progress",
+    "inprogress": "in-progress",
+    complete: "done",
+    completed: "done",
+    fixed: "done",
+    cancelled: "canceled",
+    dropped: "canceled",
+  };
+
+  return aliases[normalizedValue] ?? slugify(normalizedValue) ?? "todo";
+}
+
+function formatTaskStatusLabel(statusSlug: string) {
+  const labels: Record<string, string> = {
+    blocked: "Blocked",
+    canceled: "Canceled",
+    done: "Done",
+    "in-progress": "In progress",
+    review: "Review",
+    todo: "Todo",
+  };
+
+  if (labels[statusSlug]) {
+    return labels[statusSlug];
+  }
+
+  return statusSlug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function normalizeTaskReferenceId(value: string) {
+  const normalizedValue = stripWrappingBackticks(value).trim();
+
+  if (!normalizedValue || /^(none|n\/a|na|-+)$/i.test(normalizedValue)) {
+    return "";
+  }
+
+  return normalizedValue;
+}
+
+type RawTaskTreeDocument = {
+  title?: unknown;
+  project?: unknown;
+  version?: unknown;
+  updated?: unknown;
+  preferences?: unknown;
+  tasks?: unknown;
+};
+
+type RawTaskNode = Record<string, unknown> & {
+  id?: unknown;
+  title?: unknown;
+  status?: unknown;
+  area?: unknown;
+  dependsOn?: unknown;
+  depends_on?: unknown;
+  details?: unknown;
+  fields?: unknown;
+  children?: unknown;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringifyTaskYamlScalar(value: unknown) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
+}
+
+function taskYamlListValue(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => taskYamlListValue(item))
+      .map(normalizeTaskReferenceId)
+      .filter(Boolean);
+  }
+
+  return parseListValue(stringifyTaskYamlScalar(value))
+    .map(normalizeTaskReferenceId)
+    .filter(Boolean);
+}
+
+function humanizeYamlFieldLabel(value: string) {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function yamlValueToFunctionField(label: string, value: unknown): FunctionField | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return finalizeFunctionField({
+      label,
+      value: "",
+      items: value.map((item) => stringifyTaskYamlScalar(item)),
+    });
+  }
+
+  if (isRecord(value)) {
+    return finalizeFunctionField({
+      label,
+      value: JSON.stringify(value, null, 2),
+      items: [],
+    });
+  }
+
+  return finalizeFunctionField({
+    label,
+    value: stringifyTaskYamlScalar(value),
+    items: [],
+  });
+}
+
+function getYamlTaskFields(rawTask: RawTaskNode) {
+  const reservedKeys = new Set([
+    "id",
+    "title",
+    "status",
+    "area",
+    "dependsOn",
+    "depends_on",
+    "details",
+    "children",
+    "fields",
+  ]);
+  const fields: FunctionField[] = [];
+
+  if (isRecord(rawTask.fields)) {
+    for (const [label, value] of Object.entries(rawTask.fields)) {
+      const field = yamlValueToFunctionField(humanizeYamlFieldLabel(label), value);
+
+      if (field) {
+        fields.push(field);
+      }
+    }
+  }
+
+  for (const [key, value] of Object.entries(rawTask)) {
+    if (reservedKeys.has(key)) {
+      continue;
+    }
+
+    const field = yamlValueToFunctionField(humanizeYamlFieldLabel(key), value);
+
+    if (field) {
+      fields.push(field);
+    }
+  }
+
+  return fields;
+}
+
+function parseYamlTaskNode(
+  rawTask: RawTaskNode,
+  parentId: string | undefined,
+  usedIds: Set<string>,
+) {
+  const title = stringifyTaskYamlScalar(rawTask.title).trim() || "Task";
+  const rawId = stringifyTaskYamlScalar(rawTask.id).trim();
+  const id = ensureUniqueId(rawId || slugify(title), usedIds);
+  const statusSlug = normalizeTaskStatus(stringifyTaskYamlScalar(rawTask.status) || "todo");
+  const area = stringifyTaskYamlScalar(rawTask.area).trim() || "Tasks";
+  const content = stringifyTaskYamlScalar(rawTask.details).trim();
+  const children = Array.isArray(rawTask.children)
+    ? rawTask.children.filter(isRecord) as RawTaskNode[]
+    : [];
+
+  return {
+    task: {
+      id,
+      title,
+      status: statusSlug,
+      statusLabel: formatTaskStatusLabel(statusSlug),
+      statusSlug,
+      area,
+      areaSlug: slugify(area),
+      parentId,
+      dependsOn: taskYamlListValue(rawTask.dependsOn ?? rawTask.depends_on),
+      childrenIds: [],
+      blockingTaskIds: [],
+      depth: 0,
+      fields: getYamlTaskFields(rawTask),
+      content,
+      contentBlocks: parseMarkdownBlocks(content),
+    } satisfies TaskNode,
+    children,
+  };
+}
+
+function flattenYamlTaskTree(
+  rawTasks: RawTaskNode[],
+  parentId: string | undefined,
+  usedIds: Set<string>,
+) {
+  const tasks: TaskNode[] = [];
+
+  for (const rawTask of rawTasks) {
+    const parsedTask = parseYamlTaskNode(rawTask, parentId, usedIds);
+    tasks.push(parsedTask.task);
+    tasks.push(...flattenYamlTaskTree(parsedTask.children, parsedTask.task.id, usedIds));
+  }
+
+  return tasks;
+}
+
+function buildTaskRelationships(parsedTasks: TaskNode[]) {
+  const taskIds = new Set(parsedTasks.map((task) => task.id));
+  const tasksById = new Map(
+    parsedTasks.map((task) => [
+      task.id,
+      {
+        ...task,
+        parentId: task.parentId && taskIds.has(task.parentId) && task.parentId !== task.id
+          ? task.parentId
+          : undefined,
+        dependsOn: task.dependsOn.filter((dependencyId) =>
+          taskIds.has(dependencyId) && dependencyId !== task.id,
+        ),
+        childrenIds: [] as string[],
+        blockingTaskIds: [] as string[],
+        depth: 0,
+      },
+    ]),
+  );
+
+  for (const task of tasksById.values()) {
+    if (task.parentId) {
+      tasksById.get(task.parentId)?.childrenIds.push(task.id);
+    }
+
+    for (const dependencyId of task.dependsOn) {
+      tasksById.get(dependencyId)?.blockingTaskIds.push(task.id);
+    }
+  }
+
+  const depthCache = new Map<string, number>();
+  const resolveDepth = (taskId: string, seenIds = new Set<string>()): number => {
+    const cachedDepth = depthCache.get(taskId);
+
+    if (cachedDepth !== undefined) {
+      return cachedDepth;
+    }
+
+    const task = tasksById.get(taskId);
+
+    if (!task?.parentId || seenIds.has(taskId)) {
+      depthCache.set(taskId, 0);
+      return 0;
+    }
+
+    seenIds.add(taskId);
+    const depth = resolveDepth(task.parentId, seenIds) + 1;
+    depthCache.set(taskId, depth);
+    return depth;
+  };
+
+  for (const task of tasksById.values()) {
+    task.depth = resolveDepth(task.id);
+  }
+
+  return parsedTasks.map((task) => tasksById.get(task.id) ?? task);
+}
+
+function groupTasksByArea(tasks: TaskNode[]) {
+  const groups = new Map<string, TaskNode[]>();
+
+  for (const task of tasks) {
+    const existing = groups.get(task.area) ?? [];
+    existing.push(task);
+    groups.set(task.area, existing);
+  }
+
+  return [...groups.entries()].map(([name, areaTasks]) => ({
+    name,
+    slug: slugify(name),
+    tasks: areaTasks,
+  }));
+}
+
+function buildTaskGraphEdges(tasks: TaskNode[]) {
+  const edges: TaskGraphEdge[] = [];
+
+  for (const task of tasks) {
+    if (task.parentId) {
+      edges.push({
+        from: task.parentId,
+        to: task.id,
+        kind: "decomposition",
+      });
+    }
+
+    for (const dependencyId of task.dependsOn) {
+      edges.push({
+        from: dependencyId,
+        to: task.id,
+        kind: "dependency",
+      });
+    }
+  }
+
+  return edges;
+}
+
+function buildTaskStatusSummary(tasks: TaskNode[]) {
+  const groups = new Map<string, TaskStatusSummary>();
+
+  for (const task of tasks) {
+    const existing = groups.get(task.statusSlug) ?? {
+      status: task.statusSlug,
+      label: task.statusLabel,
+      count: 0,
+      percent: 0,
+    };
+
+    existing.count += 1;
+    groups.set(task.statusSlug, existing);
+  }
+
+  return [...groups.values()].map((statusSummary) => ({
+    ...statusSummary,
+    percent: tasks.length === 0
+      ? 0
+      : Math.round((statusSummary.count / tasks.length) * 100),
+  }));
+}
+
+function buildTaskProgress(tasks: TaskNode[]) {
+  const done = tasks.filter((task) => task.statusSlug === "done").length;
+
+  return {
+    total: tasks.length,
+    done,
+    percent: tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100),
+  };
+}
+
+function parseTaskTreeDocument(raw: string, documentPath: string): TaskTreeDocument {
+  const parsedYaml = parseYaml(raw) as RawTaskTreeDocument | null;
+  const rawDocument = isRecord(parsedYaml) ? parsedYaml : {};
+  const rawTasks = Array.isArray(rawDocument.tasks)
+    ? (rawDocument.tasks.filter(isRecord) as RawTaskNode[])
+    : [];
+  const tasks = buildTaskRelationships(flattenYamlTaskTree(rawTasks, undefined, new Set()));
+  const tasksById = Object.fromEntries(tasks.map((task) => [task.id, task]));
+  const rootTaskIds = tasks.filter((task) => !task.parentId).map((task) => task.id);
+
+  return {
+    kind: "task-tree",
+    slug: "task-tree",
+    label: "Task tree",
+    path: documentPath,
+    meta: getDocumentMeta({
+      title: stringifyTaskYamlScalar(rawDocument.title),
+      project: stringifyTaskYamlScalar(rawDocument.project),
+      version: stringifyTaskYamlScalar(rawDocument.version),
+      updated: stringifyTaskYamlScalar(rawDocument.updated),
+      preferences: stringifyTaskYamlScalar(rawDocument.preferences),
+    }, {
+      title: "Task Tree",
+      summary: "Decomposed implementation task graph.",
+    }),
+    tasks,
+    areas: groupTasksByArea(tasks),
+    tasksById,
+    rootTaskIds: rootTaskIds.length > 0 ? rootTaskIds : tasks.map((task) => task.id),
+    edges: buildTaskGraphEdges(tasks),
+    statusSummary: buildTaskStatusSummary(tasks),
+    progress: buildTaskProgress(tasks),
+  };
+}
+
 async function pathExists(targetPath: string) {
   try {
     await fs.access(targetPath);
@@ -755,6 +1222,14 @@ function getDocumentKindByFileName(fileName: string): DocumentKind | undefined {
 
   if (fileName === projectPlanDocumentFileName) {
     return "project-plan";
+  }
+
+  if (fileName === taskTreeDocumentFileName) {
+    return "task-tree";
+  }
+
+  if (fileName === taskTreeYmlDocumentFileName) {
+    return "task-tree";
   }
 
   return undefined;
@@ -832,6 +1307,7 @@ async function resolveRecognizedDocumentFiles(): Promise<RecognizedDocumentFile[
     const order: Record<DocumentKind, number> = {
       documentation: 0,
       "project-plan": 1,
+      "task-tree": 2,
     };
 
     return order[left.kind] - order[right.kind];
@@ -845,6 +1321,8 @@ async function resolveRecognizedDocumentFiles(): Promise<RecognizedDocumentFile[
         "Checked paths:",
         `- ${path.join(documentsDirectoryPath, documentationDocumentFileName)}`,
         `- ${path.join(documentsDirectoryPath, projectPlanDocumentFileName)}`,
+        `- ${path.join(documentsDirectoryPath, taskTreeDocumentFileName)}`,
+        `- ${path.join(documentsDirectoryPath, taskTreeYmlDocumentFileName)}`,
         `- ${legacyPath}`,
       ].join("\n"),
     );
@@ -858,6 +1336,10 @@ async function readRecognizedDocument(file: RecognizedDocumentFile): Promise<Rea
 
   if (file.kind === "project-plan") {
     return parseProjectPlanDocument(raw, file.path);
+  }
+
+  if (file.kind === "task-tree") {
+    return parseTaskTreeDocument(raw, file.path);
   }
 
   return parseDocumentationDocument(raw, file.path);
@@ -896,7 +1378,10 @@ export async function readDocumentCollection(): Promise<DocumentCollection> {
     documents.map((document) => [document.slug, document]),
   ) as Record<string, ReaderDocument>;
   const defaultDocument =
-    documentsBySlug.documentation ?? documentsBySlug["project-plan"] ?? documents[0];
+    documentsBySlug.documentation ??
+    documentsBySlug["project-plan"] ??
+    documentsBySlug["task-tree"] ??
+    documents[0];
 
   return {
     visibility: resolveDocumentationVisibility(),

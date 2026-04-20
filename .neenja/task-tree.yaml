@@ -1,0 +1,139 @@
+title: Neenja Task Tree
+project: Neenja
+version: 1
+updated: 2026-04-20
+preferences: Keep task trees small, status-driven, and useful for coding agents.
+
+tasks:
+  - id: add-task-tree-document-support
+    title: Add task tree document support
+    status: done
+    area: Product
+    details: |-
+      The feature introduces a third canonical document alongside documentation
+      and project plans. It keeps task progress visible to humans and gives
+      agents a small-task graph to follow during implementation.
+    children:
+      - id: parse-task-tree-documents
+        title: Parse task tree documents
+        status: done
+        area: Parser
+        fields:
+          Acceptance Notes:
+            - Recognize the original Markdown task tree by filename.
+            - Parse task metadata and graph relationships.
+            - Derive child IDs, reverse dependency IDs, graph edges, status summary, and progress.
+
+      - id: include-task-trees-in-cli-discovery
+        title: Include task trees in CLI document discovery
+        status: done
+        area: CLI
+        dependsOn:
+          - parse-task-tree-documents
+        details: |-
+          The CLI should accept a documents folder that contains only a task
+          tree, and the help text should name all recognized document filenames.
+
+      - id: render-task-tree-reader-ui
+        title: Render task tree reader UI
+        status: done
+        area: Reader
+        dependsOn:
+          - parse-task-tree-documents
+        fields:
+          Acceptance Notes:
+            - Add a navbar tab when a task tree exists.
+            - Route task tree entries under `/task-tree/:taskId/`.
+            - Group sidebar navigation by task `Area`.
+            - Render task status, progress, graph relationships, and Markdown task body.
+
+      - id: update-planning-and-sync-skills
+        title: Update planning and sync skills
+        status: done
+        area: Skills
+        dependsOn:
+          - parse-task-tree-documents
+        details: |-
+          The init skill creates both `project-plan.md` and a task tree from
+          a user brief. The sync skill reads the task tree before work and
+          updates task status when progress changes.
+
+      - id: update-canonical-project-documentation
+        title: Update canonical project documentation
+        status: done
+        area: Docs
+        dependsOn:
+          - parse-task-tree-documents
+          - render-task-tree-reader-ui
+          - update-planning-and-sync-skills
+        details: |-
+          The documentation and project plan should describe task trees as
+          first-class Neenja documents.
+
+      - id: verify-task-tree-support
+        title: Verify task tree support
+        status: done
+        area: Quality
+        dependsOn:
+          - include-task-trees-in-cli-discovery
+          - render-task-tree-reader-ui
+          - update-canonical-project-documentation
+        details: |-
+          Verification should confirm the new discriminated union branch works
+          across Astro static paths and React rendering.
+
+  - id: migrate-task-tree-to-yaml-workspace
+    title: Migrate task tree to YAML graph workspace
+    status: done
+    area: Product
+    dependsOn:
+      - add-task-tree-document-support
+    details: |-
+      Replace Markdown task-node storage with a nested YAML tree and make the
+      task tree reader a fullscreen, pannable, zoomable graph workspace.
+    children:
+      - id: parse-yaml-task-tree
+        title: Parse YAML task trees
+        status: done
+        area: Parser
+        fields:
+          Acceptance Notes:
+            - Recognize `task-tree.yaml` and `task-tree.yml`.
+            - Read top-level metadata without requiring `summary`.
+            - Flatten nested `children` into reader nodes and graph edges.
+
+      - id: render-fullscreen-task-graph
+        title: Render fullscreen task graph
+        status: done
+        area: Reader
+        dependsOn:
+          - parse-yaml-task-tree
+        fields:
+          Acceptance Notes:
+            - Use the full viewport as the graph workspace.
+            - Support panning and zooming.
+            - Show every task and all decomposition/dependency edges.
+
+      - id: open-task-detail-drawer
+        title: Open task detail drawer
+        status: done
+        area: Reader
+        dependsOn:
+          - render-fullscreen-task-graph
+        fields:
+          Acceptance Notes:
+            - Open details on the right when a task is selected.
+            - Keep the drawer closable with an icon button.
+            - Let the drawer cover most or all of the graph on mobile.
+
+      - id: refresh-task-tree-docs-and-skills
+        title: Refresh task tree docs and skills
+        status: done
+        area: Docs
+        dependsOn:
+          - parse-yaml-task-tree
+          - render-fullscreen-task-graph
+        fields:
+          Acceptance Notes:
+            - Update README, documentation, project plan, init skill, sync skill, and bootstrap skill.
+            - Replace Markdown task tree examples with YAML tree examples.

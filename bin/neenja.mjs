@@ -11,6 +11,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const defaultDocumentsDirectoryPath = ".neenja";
 const defaultDocumentationFilePath = path.join(defaultDocumentsDirectoryPath, "documentation.md");
 const defaultProjectPlanFilePath = path.join(defaultDocumentsDirectoryPath, "project-plan.md");
+const defaultTaskTreeFilePath = path.join(defaultDocumentsDirectoryPath, "task-tree.yaml");
 const defaultDocumentsDirectoryDisplayPath = ".neenja";
 const legacyRootDocumentationFilePath = "neenja.knowledge.md";
 const legacyRootDocumentationFileDisplayPath = "./neenja.knowledge.md";
@@ -34,7 +35,7 @@ Options:
 
 Notes:
   - If no folder is provided, Neenja reads ./${defaultDocumentsDirectoryDisplayPath}.
-  - Recognized documents are ${defaultDocumentationFilePath} and ${defaultProjectPlanFilePath}.
+  - Recognized documents are ${defaultDocumentationFilePath}, ${defaultProjectPlanFilePath}, and ${defaultTaskTreeFilePath}.
   - If the documents folder has no documentation file, Neenja falls back to
     ${legacyRootDocumentationFileDisplayPath}.
 
@@ -183,7 +184,9 @@ async function pathExists(targetPath) {
 
 async function directoryHasRecognizedDocuments(directoryPath) {
   return (await pathExists(path.join(directoryPath, "documentation.md"))) ||
-    (await pathExists(path.join(directoryPath, "project-plan.md")));
+    (await pathExists(path.join(directoryPath, "project-plan.md"))) ||
+    (await pathExists(path.join(directoryPath, "task-tree.yaml"))) ||
+    (await pathExists(path.join(directoryPath, "task-tree.yml")));
 }
 
 async function resolveDocumentsTarget(projectRoot, options) {
@@ -241,6 +244,8 @@ async function resolveDocumentsTarget(projectRoot, options) {
       ...candidateDirectories.flatMap((candidateDirectory) => [
         `- ${path.join(candidateDirectory, "documentation.md")}`,
         `- ${path.join(candidateDirectory, "project-plan.md")}`,
+        `- ${path.join(candidateDirectory, "task-tree.yaml")}`,
+        `- ${path.join(candidateDirectory, "task-tree.yml")}`,
       ]),
       ...(!options.dir ? [`- ${legacyPath}`] : []),
       "",

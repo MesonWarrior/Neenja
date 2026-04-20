@@ -47,7 +47,8 @@
     "@astrojs/react": "4.4.2",
     "astro": "5.18.1",
     "react": "19.2.5",
-    "react-dom": "19.2.5"
+    "react-dom": "19.2.5",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.4",

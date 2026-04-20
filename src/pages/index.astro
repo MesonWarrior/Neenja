@@ -8,7 +8,9 @@ const document = collection.defaultDocument;
 const firstEntryId =
   document.kind === "documentation"
     ? document.concepts[0]?.id
-    : document.sections[0]?.id;
+    : document.kind === "project-plan"
+      ? document.sections[0]?.id
+      : undefined;
 const basePath = import.meta.env.BASE_URL;
 const brandIconSrc = `${basePath}brand/neenja.svg`;
 ---

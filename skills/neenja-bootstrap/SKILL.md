@@ -27,6 +27,8 @@ documentation preferences.
 - Do not place the canonical documentation file in the repository root.
 - Do not overwrite `./.neenja/project-plan.md`; that file is owned by the
   project plan workflow.
+- Do not overwrite `./.neenja/task-tree.yaml`; that file is owned by the project
+  planning workflow.
 
 ## Hard requirements
 
@@ -134,13 +136,15 @@ Fields:
 2. Read `./.neenja/documentation.md` first if it already exists.
 3. Read `./.neenja/project-plan.md` when it exists so documentation aligns with
    the current project intent.
-4. Identify the main product purpose and user-facing capabilities.
-5. Separate documentation that should be public from documentation that is only
+4. Read `./.neenja/task-tree.yaml` when it exists so documentation aligns with
+   the current implementation graph.
+5. Identify the main product purpose and user-facing capabilities.
+6. Separate documentation that should be public from documentation that is only
    useful internally for maintainers and coding agents.
-6. Identify architectural layers, data flows, and major modules.
-7. Identify operational details, setup rules, integration constraints, and
+7. Identify architectural layers, data flows, and major modules.
+8. Identify operational details, setup rules, integration constraints, and
    externally meaningful APIs, commands, and types.
-8. Write or update the single canonical documentation file at the required
+9. Write or update the single canonical documentation file at the required
    path.
 
 ## Quality bar
