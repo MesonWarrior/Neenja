@@ -1,6 +1,9 @@
 ---
 import { DocsShell } from "../../../components/docs-shell";
-import { readDocumentCollection } from "../../../lib/documentation-file";
+import {
+  getReaderDocumentDescription,
+  readDocumentCollection,
+} from "../../../lib/documentation-file";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 
 export async function getStaticPaths() {
@@ -33,7 +36,7 @@ const brandIconSrc = `${basePath}brand/neenja.svg`;
 
 <BaseLayout
   title={document.meta.title}
-  description={document.meta.summary}
+  description={getReaderDocumentDescription(document)}
   iconHref={brandIconSrc}
 >
   <DocsShell

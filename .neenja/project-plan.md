@@ -3,7 +3,6 @@ title: Neenja Project Plan
 project: Neenja
 version: 1
 updated: 2026-04-20
-summary: Neenja is a project memory workspace that renders documentation, finalized project intent, and task trees side by side.
 preferences: Keep project plans concise, structured, and implementation-ready for coding agents.
 ---
 
@@ -12,7 +11,6 @@ preferences: Keep project plans concise, structured, and implementation-ready fo
 ## Plan: Project Definition
 ID: project-definition
 Area: Project
-Summary: Neenja is a CLI and reader for canonical project documentation stored as project files under `.neenja`.
 Project: Neenja
 Audience:
 - developers using coding agents
@@ -25,7 +23,6 @@ place to inspect the repository documentation and the approved project intent.
 ## Plan: Primary Goal
 ID: primary-goal
 Area: Goal
-Summary: The product goal is to render documentation, a finalized project plan, and a task tree from the same Neenja documents folder.
 Primary Goal: Provide a reader that switches between current project documentation, approved project intent, and implementation task progress without changing tools.
 Success Criteria:
 - `neenja serve` reads `.neenja/` as a document folder.
@@ -41,7 +38,6 @@ target outcome, constraints, and scope that guide code changes.
 ## Plan: Scope
 ID: scope
 Area: Delivery
-Summary: The project scope is multi-document reading, project-plan rendering, task-tree rendering, and planning skills.
 In Scope:
 - folder-based document discovery
 - route namespace per document
@@ -63,7 +59,6 @@ filename-based: `documentation.md`, `project-plan.md`, and `task-tree.yaml`.
 ## Plan: Acceptance Criteria
 ID: acceptance-criteria
 Area: Delivery
-Summary: The reader and CLI satisfy the project plan when recognized document types render through stable folder-based routes.
 Acceptance Criteria:
 - `readDocumentCollection` returns recognized documents in navbar order.
 - Documentation routes use `/documentation/:conceptId/`.
@@ -82,10 +77,9 @@ approved project plan as a peer document.
 ## Plan: Constraints
 ID: constraints
 Area: Delivery
-Summary: The project plan favors predictable schemas and compatibility with existing documentation workflows.
 Constraints:
 - Existing concept parsing remains unchanged inside `documentation.md`.
-- Project-plan sections require `ID`, `Area`, and `Summary`.
+- Project-plan sections require `ID` and `Area`.
 - Task-tree tasks require stable `id` values and should include `title`, `status`, and `area`; task trees do not store `summary`.
 - Unknown files in `.neenja/` are ignored.
 - Legacy `--file` support remains limited to single documentation files.

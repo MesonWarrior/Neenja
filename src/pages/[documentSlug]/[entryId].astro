@@ -1,6 +1,9 @@
 ---
 import { DocsShell } from "../../../components/docs-shell";
-import { readDocumentCollection } from "../../../lib/documentation-file";
+import {
+  getReaderDocumentDescription,
+  readDocumentCollection,
+} from "../../../lib/documentation-file";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 
 export async function getStaticPaths() {
@@ -18,7 +21,7 @@ export async function getStaticPaths() {
           ? document.sections.map((section) => ({
               id: section.id,
               title: section.title,
-              summary: section.summary,
+              summary: getReaderDocumentDescription(document),
             }))
           : document.tasks.map((task) => ({
               id: task.id,
@@ -62,7 +65,7 @@ const entryDescription =
   document.kind === "documentation"
     ? document.conceptsById[entryId ?? ""]?.summary
     : document.kind === "project-plan"
-      ? document.sectionsById[entryId ?? ""]?.summary
+      ? getReaderDocumentDescription(document)
       : document.tasksById[entryId ?? ""]?.content || document.meta.summary;
 
 const basePath = import.meta.env.BASE_URL;
@@ -71,7 +74,7 @@ const brandIconSrc = `${basePath}brand/neenja.svg`;
 
 <BaseLayout
   title={`${document.meta.title} / ${entry.title}`}
-  description={entryDescription || document.meta.summary}
+  description={entryDescription || getReaderDocumentDescription(document)}
   iconHref={brandIconSrc}
 >
   <DocsShell

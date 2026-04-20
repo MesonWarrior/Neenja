@@ -137,7 +137,6 @@ title: <project name> Project Plan
 project: <project name>
 version: 1
 updated: <YYYY-MM-DD>
-summary: <one sentence project intent>
 preferences: <optional single-line user project preferences>
 ---
 ```
@@ -152,7 +151,6 @@ After frontmatter, the plan uses `## Plan:` blocks:
 ## Plan: <Human Section Title>
 ID: <stable-machine-id>
 Area: <Project|Goal|Audience|Scope|Delivery|Risks|Decisions>
-Summary: <one sentence section summary>
 <Additional Field>: <structured value>
 <List Field>:
 - <item>
@@ -161,9 +159,9 @@ Summary: <one sentence section summary>
 <Markdown body with useful detail.>
 ```
 
-The required section fields are `ID`, `Area`, and `Summary`. Any additional
-fields are rendered as structured plan details. After user approval, the plan
-is treated as finalized project intent.
+The required section fields are `ID` and `Area`. Any additional fields are
+rendered as structured plan details. After user approval, the plan is treated
+as finalized project intent.
 
 ### Task tree file
 The task tree file is YAML and stores a real nested tree:
@@ -331,7 +329,7 @@ These are the main structured values used by the parser and reader.
 #### Type: `DocumentMeta`
 Kind: object
 Definition: `{ title: string; project: string; version: string; updated: string; summary: string; preferences?: string }`
-Description: Metadata exposed by every reader document.
+Description: Metadata exposed by documentation and task-tree documents.
 Fields:
 - title: `string` - Rendered document title.
 - project: `string` - Project name from frontmatter.
@@ -339,6 +337,17 @@ Fields:
 - updated: `string` - Last canonical document update date.
 - summary: `string` - Short description shown in the reader shell; task trees receive a parser default because YAML task trees do not store summary.
 - preferences: `string | undefined` - Optional single-line user preferences stored by skills.
+
+#### Type: `ProjectPlanMeta`
+Kind: object
+Definition: `{ title: string; project: string; version: string; updated: string; preferences?: string }`
+Description: Frontmatter metadata exposed by project-plan documents.
+Fields:
+- title: `string` - Rendered project-plan title.
+- project: `string` - Project name from frontmatter.
+- version: `string` - Schema version marker stored in the file.
+- updated: `string` - Last canonical project-plan update date.
+- preferences: `string | undefined` - Optional single-line user preferences stored by the planning skill.
 
 #### Type: `DocumentKind`
 Kind: union
@@ -389,7 +398,6 @@ Fields:
 - title: `string` - Human-readable section title.
 - area: `string` - Sidebar group such as `Project`, `Goal`, `Scope`, or `Delivery`.
 - areaSlug: `string` - Normalized area key used by the UI.
-- summary: `string` - Short section summary.
 - fields: `FunctionField[]` - Additional structured plan fields.
 - contentBlocks: `ConceptContentBlock[]` - Markdown body content.
 
@@ -461,7 +469,7 @@ Fields:
 - kind: `"project-plan"` - Document discriminator.
 - slug: `"project-plan"` - Route segment for project plan pages.
 - label: `string` - Navbar label.
-- meta: `DocumentMeta` - Frontmatter metadata.
+- meta: `ProjectPlanMeta` - Frontmatter metadata without summary.
 - sections: `PlanSection[]` - Parsed plan sections.
 - areas: `PlanAreaGroup[]` - Sections grouped for sidebar navigation.
 - sectionsById: `Record<string, PlanSection>` - Plan sections keyed by ID.
@@ -618,7 +626,7 @@ Kind: function
 Signature: `parsePlanSection(block: string): PlanSection`
 Description: Parse one `## Plan:` block into a structured project plan section.
 Behavior:
-- Reads `ID`, `Area`, and `Summary`.
+- Reads `ID` and `Area`.
 - Keeps additional fields as structured plan details.
 - Parses the remaining body as Markdown content.
 

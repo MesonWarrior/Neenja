@@ -56,6 +56,8 @@ export type DocumentMeta = {
   preferences?: string;
 };
 
+export type ProjectPlanMeta = Omit<DocumentMeta, "summary">;
+
 export type Concept = {
   id: string;
   title: string;
@@ -103,7 +105,6 @@ export type PlanSection = {
   title: string;
   area: string;
   areaSlug: string;
-  summary: string;
   fields: FunctionField[];
   content: string;
   contentBlocks: ConceptContentBlock[];
@@ -120,7 +121,7 @@ export type ProjectPlanDocument = {
   slug: "project-plan";
   label: string;
   path: string;
-  meta: DocumentMeta;
+  meta: ProjectPlanMeta;
   sections: PlanSection[];
   areas: PlanAreaGroup[];
   sectionsById: Record<string, PlanSection>;
@@ -192,6 +193,14 @@ export type DocumentCollection = {
   documentsBySlug: Record<string, ReaderDocument>;
   defaultDocument: ReaderDocument;
 };
+
+export function getReaderDocumentDescription(document: ReaderDocument) {
+  if (document.kind === "project-plan") {
+    return `${document.meta.title} for ${document.meta.project}.`;
+  }
+
+  return document.meta.summary;
+}
 
 type RecognizedDocumentFile = {
   kind: DocumentKind;
@@ -648,6 +657,16 @@ function getDocumentMeta(
   };
 }
 
+function getProjectPlanMeta(meta: Record<string, string>): ProjectPlanMeta {
+  return {
+    title: meta.title || "Project Plan",
+    project: meta.project || "Unknown Project",
+    version: meta.version || "1",
+    updated: meta.updated || "Unknown",
+    ...(meta.preferences ? { preferences: meta.preferences } : {}),
+  };
+}
+
 function orderCategoryConcepts(concepts: Concept[]) {
   return [
     ...concepts.filter((concept) => concept.kind === "concept"),
@@ -758,7 +777,6 @@ function parsePlanSection(block: string): PlanSection {
     title,
     area,
     areaSlug: slugify(area),
-    summary: getFunctionFieldText(fields, "Summary"),
     fields: fields.filter((field) => !hiddenFieldLabels.has(normalizeFieldLabel(field.label))),
     content,
     contentBlocks: parseMarkdownBlocks(content),
@@ -791,10 +809,7 @@ function parseProjectPlanDocument(raw: string, documentPath: string): ProjectPla
     slug: "project-plan",
     label: "Project plan",
     path: documentPath,
-    meta: getDocumentMeta(meta, {
-      title: "Project Plan",
-      summary: "Structured project plan.",
-    }),
+    meta: getProjectPlanMeta(meta),
     sections,
     areas: groupPlanSectionsByArea(sections),
     sectionsById,

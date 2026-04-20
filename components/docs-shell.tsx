@@ -171,7 +171,6 @@ function planSectionMatchesSearch(section: PlanSection, query: string) {
   const haystack = [
     section.title,
     section.area,
-    section.summary,
     section.fields
       .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
       .join("\n"),
@@ -1412,11 +1411,12 @@ export function DocsShell({
         <aside className={isSidebarOpen ? "sidebar open" : "sidebar"}>
           {renderDocumentNavigation("document-nav sidebar-document-nav")}
 
-          <section className="sidebar-panel hero-panel">
-            <p className="eyebrow">Description</p>
-            <ExpandableText text={activeDocument.meta.summary} className="hero-copy" />
-            <p className="updated">Updated: {activeDocument.meta.updated}</p>
-          </section>
+          {isDocumentationDocument(activeDocument) && (
+            <section className="sidebar-panel hero-panel">
+              <p className="eyebrow">Description</p>
+              <ExpandableText text={activeDocument.meta.summary} className="hero-copy" />
+            </section>
+          )}
 
           <section className="concept-list-panel" aria-label="Navigation">
             {isDocumentationDocument(activeDocument)
@@ -1682,7 +1682,6 @@ export function DocsShell({
               <header className="reader-header">
                 <p className="eyebrow">{selectedPlanSection.area}</p>
                 <h2>{selectedPlanSection.title}</h2>
-                <p className="reader-summary">{selectedPlanSection.summary}</p>
 
                 <PlanFields fields={selectedPlanSection.fields} />
               </header>
@@ -1869,9 +1868,6 @@ export function DocsShell({
                         >
                           <span className="search-result-eyebrow">{section.area}</span>
                           <strong className="search-result-title">{section.title}</strong>
-                          <span className="search-result-summary">
-                            {section.summary || "Open this plan section."}
-                          </span>
                         </a>
                       ))}
                     </section>

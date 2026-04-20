@@ -257,7 +257,7 @@ input[type="search"]::-webkit-search-cancel-button {
 .docs-layout {
   min-height: 100vh;
   padding-top: var(--header-height);
-  background-color: var(--bg);
+  background-color: var(--panel);
 }
 
 .sidebar-backdrop,
@@ -372,16 +372,6 @@ input[type="search"]::-webkit-search-cancel-button {
   font-size: 0.83rem;
   font-weight: 600;
   cursor: pointer;
-}
-
-.updated {
-  margin: 12px 0 0;
-  font-size: 0.75rem;
-  color: var(--muted);
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  font-style: italic;
-  opacity: 0.5;
 }
 
 .concept-list-panel {

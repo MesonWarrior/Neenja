@@ -52,7 +52,6 @@ title: <project name> Project Plan
 project: <project name>
 version: 1
 updated: <YYYY-MM-DD>
-summary: <one-sentence project intent>
 preferences: <optional single-line user project preferences>
 ---
 
@@ -61,7 +60,6 @@ preferences: <optional single-line user project preferences>
 ## Plan: <Human Section Title>
 ID: <stable-machine-id>
 Area: <Project|Goal|Audience|Scope|Experience|Technical|Delivery|Risks|Decisions>
-Summary: <one-sentence section summary>
 <Additional Field>: <structured value>
 <List Field>:
 - <item>
