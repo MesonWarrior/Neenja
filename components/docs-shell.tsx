@@ -1,10 +1,9 @@
 import type {
   MouseEvent,
   PointerEvent as ReactPointerEvent,
-  WheelEvent as ReactWheelEvent,
 } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, LockKeyhole, Menu, Search, X } from "./icons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Focus, LockKeyhole, Menu, Minus, Plus, Search, X } from "./icons";
 import {
   FunctionReferenceSection,
   TypeReferenceSection,
@@ -464,6 +463,10 @@ type TaskGraphPosition = {
   y: number;
 };
 
+type TaskGraphTransform = TaskGraphPosition & {
+  scale: number;
+};
+
 function buildTaskGraphLayout(document: TaskTreeDocument) {
   const positions: Record<string, TaskGraphPosition> = {};
   let cursorY = 0;
@@ -556,6 +559,23 @@ function getGraphCurvePath(
   ].join(" ");
 }
 
+function getZoomedGraphTransform(
+  current: TaskGraphTransform,
+  nextScale: number,
+  originX: number,
+  originY: number,
+): TaskGraphTransform {
+  const scale = Math.min(2.2, Math.max(0.28, nextScale));
+  const graphX = (originX - current.x) / current.scale;
+  const graphY = (originY - current.y) / current.scale;
+
+  return {
+    x: originX - graphX * scale,
+    y: originY - graphY * scale,
+    scale,
+  };
+}
+
 function TaskGraphWorkspace({
   basePath,
   document,
@@ -574,7 +594,7 @@ function TaskGraphWorkspace({
   const isPanningRef = useRef(false);
   const lastPointerRef = useRef({ x: 0, y: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 1, height: 1 });
-  const [transform, setTransform] = useState({ x: 80, y: 80, scale: 1 });
+  const [transform, setTransform] = useState<TaskGraphTransform>({ x: 80, y: 80, scale: 1 });
   const decompositionEdges = document.edges.filter((edge) => edge.kind === "decomposition");
   const dependencyEdges = document.edges.filter((edge) => edge.kind === "dependency");
 
@@ -625,30 +645,37 @@ function TaskGraphWorkspace({
     fitGraph();
   }, [graph.height, graph.width, viewportSize.height, viewportSize.width]);
 
-  const zoomAt = (nextScale: number, originX = viewportSize.width / 2, originY = viewportSize.height / 2) => {
+  const zoomBy = useCallback((scaleFactor: number, originX = viewportSize.width / 2, originY = viewportSize.height / 2) => {
     setTransform((current) => {
-      const scale = Math.min(2.2, Math.max(0.28, nextScale));
-      const graphX = (originX - current.x) / current.scale;
-      const graphY = (originY - current.y) / current.scale;
-
-      return {
-        x: originX - graphX * scale,
-        y: originY - graphY * scale,
-        scale,
-      };
+      return getZoomedGraphTransform(current, current.scale * scaleFactor, originX, originY);
     });
-  };
+  }, [viewportSize.height, viewportSize.width]);
 
-  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const direction = event.deltaY > 0 ? 0.88 : 1.12;
-    zoomAt(
-      transform.scale * direction,
-      event.clientX - rect.left,
-      event.clientY - rect.top,
-    );
-  };
+  useEffect(() => {
+    const node = viewportRef.current;
+
+    if (!node) {
+      return;
+    }
+
+    const handleNativeWheel = (event: WheelEvent) => {
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+
+      event.stopPropagation();
+
+      const rect = node.getBoundingClientRect();
+      const direction = event.deltaY > 0 ? 0.88 : 1.12;
+      zoomBy(direction, event.clientX - rect.left, event.clientY - rect.top);
+    };
+
+    node.addEventListener("wheel", handleNativeWheel, { passive: false, capture: true });
+
+    return () => {
+      node.removeEventListener("wheel", handleNativeWheel, true);
+    };
+  }, [zoomBy]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) {
@@ -711,30 +738,30 @@ function TaskGraphWorkspace({
         <div className="task-workspace-controls" aria-label="Graph controls">
           <button
             type="button"
-            className="task-control-button"
+            className="task-control-button task-control-zoom-out"
             title="Zoom out"
             aria-label="Zoom out"
-            onClick={() => zoomAt(transform.scale * 0.82)}
+            onClick={() => zoomBy(0.82)}
           >
-            -
+            <Minus size={18} />
           </button>
           <button
             type="button"
-            className="task-control-button"
+            className="task-control-button task-control-reset"
             title="Reset view"
             aria-label="Reset view"
             onClick={fitGraph}
           >
-            1:1
+            <Focus size={18} />
           </button>
           <button
             type="button"
-            className="task-control-button"
+            className="task-control-button task-control-zoom-in"
             title="Zoom in"
             aria-label="Zoom in"
-            onClick={() => zoomAt(transform.scale * 1.18)}
+            onClick={() => zoomBy(1.18)}
           >
-            +
+            <Plus size={18} />
           </button>
         </div>
       </div>
@@ -742,7 +769,6 @@ function TaskGraphWorkspace({
       <div
         ref={viewportRef}
         className="task-graph-viewport"
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={stopPanning}
@@ -873,17 +899,17 @@ function TaskDetailDrawer({
 }) {
   return (
     <aside className="task-detail-drawer" aria-label="Task details">
+      <button
+        type="button"
+        className="icon-button task-detail-close"
+        aria-label="Close task details"
+        onClick={onClose}
+      >
+        <X size={18} />
+      </button>
+
       <article className="reader-card task-detail-card">
         <header className="reader-header task-detail-header">
-          <button
-            type="button"
-            className="icon-button task-detail-close"
-            aria-label="Close task details"
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
-
           <p className="eyebrow">{task.area}</p>
           <h2>{task.title}</h2>
 
@@ -897,18 +923,18 @@ function TaskDetailDrawer({
         </header>
 
         <div className="reader-body task-detail-body">
-          <TaskRelations
-            basePath={basePath}
-            document={document}
-            task={task}
-          />
-
           {task.contentBlocks.map((block, index) => (
             <MarkdownContent
               key={`${task.id}-markdown-${index}`}
               content={block.content}
             />
           ))}
+
+          <TaskRelations
+            basePath={basePath}
+            document={document}
+            task={task}
+          />
         </div>
       </article>
     </aside>

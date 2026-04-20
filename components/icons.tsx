@@ -81,6 +81,14 @@ export const Copy = createIcon("copy", [
   <path key="copy-path" d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />,
 ]);
 
+export const Focus = createIcon("focus", [
+  <path key="focus-top-left" d="M3 7V5a2 2 0 0 1 2-2h2" />,
+  <path key="focus-top-right" d="M17 3h2a2 2 0 0 1 2 2v2" />,
+  <path key="focus-bottom-right" d="M21 17v2a2 2 0 0 1-2 2h-2" />,
+  <path key="focus-bottom-left" d="M7 21H5a2 2 0 0 1-2-2v-2" />,
+  <circle key="focus-circle" cx="12" cy="12" r="3" />,
+]);
+
 export const LockKeyhole = createIcon("lock-keyhole", [
   <circle key="lock-circle" cx="12" cy="16" r="1" />,
   <rect key="lock-rect" x="3" y="10" width="18" height="12" rx="2" />,
@@ -91,6 +99,15 @@ export const Menu = createIcon("menu", [
   <path key="menu-path-top" d="M4 5h16" />,
   <path key="menu-path-middle" d="M4 12h16" />,
   <path key="menu-path-bottom" d="M4 19h16" />,
+]);
+
+export const Minus = createIcon("minus", [
+  <path key="minus-path" d="M5 12h14" />,
+]);
+
+export const Plus = createIcon("plus", [
+  <path key="plus-path-horizontal" d="M5 12h14" />,
+  <path key="plus-path-vertical" d="M12 5v14" />,
 ]);
 
 export const Search = createIcon("search", [

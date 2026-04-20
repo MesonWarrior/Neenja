@@ -990,23 +990,23 @@ input[type="search"]::-webkit-search-cancel-button {
 
 .task-relations {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   margin: 0;
 }
 
 .task-relation-group {
-  padding: 12px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.035);
 }
 
 .task-relation-group dt {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -1017,19 +1017,19 @@ input[type="search"]::-webkit-search-cancel-button {
 .task-relation-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .task-relation-links a {
   display: inline-flex;
   align-items: center;
-  min-height: 26px;
-  padding: 5px 10px;
+  min-height: 22px;
+  padding: 4px 8px;
   border: 1px solid rgba(232, 116, 74, 0.2);
   border-radius: 999px;
   background: rgba(232, 116, 74, 0.1);
   color: var(--accent-strong);
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -1093,6 +1093,10 @@ input[type="search"]::-webkit-search-cancel-button {
     transform 140ms ease;
 }
 
+.task-control-button svg {
+  flex-shrink: 0;
+}
+
 .task-control-button:hover {
   border-color: rgba(232, 116, 74, 0.26);
 }
@@ -1106,6 +1110,7 @@ input[type="search"]::-webkit-search-cancel-button {
   inset: var(--header-height) 0 0;
   overflow: hidden;
   cursor: grab;
+  overscroll-behavior: contain;
   touch-action: none;
 }
 
@@ -1159,8 +1164,9 @@ input[type="search"]::-webkit-search-cancel-button {
   text-align: left;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
   cursor: pointer;
+  touch-action: none;
   transition:
-    background 140ms ease
+    background 140ms ease,
     border 140ms ease;
 }
 
@@ -1238,6 +1244,9 @@ input[type="search"]::-webkit-search-cancel-button {
   position: absolute;
   top: 22px;
   right: 22px;
+  z-index: 2;
+  background: var(--panel);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
 }
 
 .task-detail-body {
@@ -1886,6 +1895,18 @@ p.function-reference-description {
   .task-workspace-controls {
     flex-direction: column;
     padding: 4px;
+  }
+
+  .task-control-zoom-in {
+    order: 1;
+  }
+
+  .task-control-reset {
+    order: 2;
+  }
+
+  .task-control-zoom-out {
+    order: 3;
   }
 
   .task-control-button {
