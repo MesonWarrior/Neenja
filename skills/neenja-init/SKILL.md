@@ -66,22 +66,17 @@ preferences: <optional single-line user preferences>
 ID: <stable-machine-id>
 Area: <Architecture|Runtime|Frontend|Backend|Data Contracts|Integrations|Infrastructure|Quality|Skills|Decisions>
 Summary: <one sentence technical summary>
-<Additional Field>: <structured value>
-<List Field>:
-- <item>
-- <item>
 
-<Optional intro Markdown.>
+<Free-form technical Markdown. Use paragraphs, bullets, tables, and code
+blocks when they make the implementation intent clearer.>
 
 ### <Technical Detail Block>
-<Additional Field>: <structured value>
-<List Field>:
-- <item>
-
-<Optional Markdown body for the detail block.>
+<Free-form Markdown body for the detail block.>
 ```
 
 If there is no user preferences string, omit the `preferences:` line.
+Only `ID`, `Area`, and `Summary` are structured plan metadata. Write all other
+technical content as normal Markdown instead of custom structured field blocks.
 
 ## Required task tree format
 
@@ -99,9 +94,6 @@ tasks:
     area: <Project|Frontend|Backend|Data|Infrastructure|Quality|Delivery|Docs|Skills|other useful area>
     dependsOn:
       - <optional dependency task ID>
-    fields:
-      <Additional Field>:
-        - <item>
     details: |-
       <optional Markdown task detail, acceptance notes, or implementation hints>
     children:
@@ -147,8 +139,8 @@ for a different decomposition:
 - Set initial statuses to `todo` unless the repository already contains work
   that clearly completes a task.
 - Prefer small, verifiable tasks over vague phases.
-- Include acceptance hints in task `details` or `fields` when they materially
-  help implementation.
+- Include acceptance hints in task `details` when they materially help
+  implementation.
 
 ## Authoring rules
 
@@ -177,5 +169,5 @@ Your final response should briefly say that the technical plan was created and
 ask:
 
 ```txt
-Посмотри, пожалуйста, все ли в technical plan и task tree ОК. Что поправить перед тем, как считать их финальными?
+Please review whether the technical plan and task tree look correct. What should change before we treat them as final?
 ```

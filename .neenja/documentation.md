@@ -154,26 +154,19 @@ blocks:
 ID: <stable-machine-id>
 Area: <Architecture|Runtime|Frontend|Backend|Data Contracts|Integrations|Infrastructure|Quality|Skills|Decisions>
 Summary: <one sentence technical summary>
-<Additional Field>: <structured value>
-<List Field>:
-- <item>
-- <item>
 
-<Optional intro Markdown.>
+<Free-form technical Markdown. Use normal Markdown lists, tables, and code
+blocks when they make the implementation intent clearer.>
 
 ### <Technical Detail Block>
-<Additional Field>: <structured value>
-<List Field>:
-- <item>
-
-<Optional Markdown body for the detail block.>
+<Free-form Markdown body for the detail block.>
 ```
 
 The required section fields are `ID` and `Area`. `Summary` is optional and is
-rendered below the section title. Additional fields become structured plan
-details. Content before the first `###` heading is rendered as section intro
-Markdown, and each `###` heading becomes a readable detail block with its own
-optional structured fields and Markdown body.
+rendered below the section title. Everything else in a section is ordinary
+Markdown. Content before the first `###` heading is rendered as section intro
+Markdown, and each `###` heading becomes a readable detail block with a
+free-form Markdown body.
 
 The project plan should store architecture, module boundaries, data contracts,
 integration details, implementation constraints, and explicit user technical
@@ -196,11 +189,8 @@ tasks:
     area: <Project|Frontend|Backend|Data|Infrastructure|Quality|Delivery|Docs|Skills>
     dependsOn:
       - <optional dependency task ID>
-    fields:
-      Acceptance Notes:
-        - <item>
     details: |-
-      <optional Markdown task detail>
+      <optional Markdown task detail, acceptance notes, or implementation hints>
     children:
       - id: <stable-machine-id>
         title: <Human Subtask Title>
@@ -210,9 +200,9 @@ tasks:
 
 Nested `children:` creates decomposition edges. `dependsOn:` creates dependency
 edges between tasks, including across different parents. The task tree does not
-store `summary`; task details belong in optional `details` or structured
-`fields`. The reader calculates progress from task statuses and treats
-`status: done` as completed work.
+store `summary`; all task description, acceptance notes, and implementation
+hints belong in optional Markdown `details`. The reader calculates progress
+from task statuses and treats `status: done` as completed work.
 
 ### Type links
 When a function signature or the type part of a `Parameters` or `Fields` list
@@ -389,9 +379,9 @@ Description: Renderer mode for a documentation concept body.
 #### Type: `FunctionField`
 Kind: object
 Definition: `{ label: string; value: string; items: string[] }`
-Description: Structured field captured from function, type, project-plan, plan detail, or task blocks.
+Description: Structured field captured from function or type blocks.
 Fields:
-- label: `string` - Original field name such as `Parameters`, `Fields`, `Source Files`, or `Success Criteria`.
+- label: `string` - Original field name such as `Kind`, `Signature`, `Parameters`, `Definition`, or `Fields`.
 - value: `string` - Inline text stored on the same line as the field label.
 - items: `string[]` - List items collected under that field.
 
@@ -421,8 +411,7 @@ Fields:
 - area: `string` - Sidebar group such as `Architecture`, `Runtime`, `Data Contracts`, or `Quality`.
 - areaSlug: `string` - Normalized area key used by the UI.
 - summary: `string` - Optional section summary rendered below the section title and included in search.
-- fields: `FunctionField[]` - Additional structured plan fields.
-- contentBlocks: `ConceptContentBlock[]` - Intro Markdown before the first plan detail block.
+- contentBlocks: `ConceptContentBlock[]` - Free-form Markdown before the first plan detail block.
 - detailBlocks: `PlanDetailBlock[]` - Parsed `###` technical detail blocks owned by the section.
 
 #### Type: `PlanDetailBlock`
@@ -431,7 +420,6 @@ Description: Parsed `###` technical detail block inside a project-plan section.
 Fields:
 - id: `string` - Generated stable-enough block ID derived from the heading and uniqued within the section.
 - title: `string` - Human-readable detail block title.
-- fields: `FunctionField[]` - Structured fields at the top of the detail block.
 - contentBlocks: `ConceptContentBlock[]` - Markdown body content for the detail block.
 
 #### Type: `TaskNode`
@@ -450,7 +438,6 @@ Fields:
 - childrenIds: `string[]` - Child task IDs derived from nested `children`.
 - blockingTaskIds: `string[]` - Task IDs that depend on this task.
 - depth: `number` - Derived nesting depth in the decomposition tree.
-- fields: `FunctionField[]` - Additional structured task fields.
 - contentBlocks: `ConceptContentBlock[]` - Markdown body content.
 
 #### Type: `TaskGraphEdge`
@@ -560,15 +547,14 @@ The parser lives in `lib/documentation-file.ts`. It:
 
 ### Project plan parsing
 The project-plan parser treats `## Plan:` as the section boundary and `###` as
-the detail-block boundary inside a section. It reads leading structured fields
-only until body Markdown starts, so a technical plan can mix compact fields,
-lists, and longer Markdown without forcing every detail into metadata.
+the detail-block boundary inside a section. It reads only `ID`, `Area`, and
+optional `Summary` as section metadata, so technical plans can use normal
+Markdown for lists, compact notes, examples, and longer implementation detail.
 
-`Summary` is extracted into `PlanSection.summary`, `ID` and `Area` stay hidden
-from the rendered field grid, and additional leading fields render as
-structured details. Content before the first `###` heading becomes section
-intro Markdown. Each `###` detail block can also start with structured fields
-before its Markdown body.
+`Summary` is extracted into `PlanSection.summary`, while all non-metadata
+section text stays in Markdown content. Content before the first `###` heading
+becomes section intro Markdown. Each `###` detail block keeps its body as
+free-form Markdown.
 
 ### Legacy path
 `NEENJA_DOCUMENTATION_PATH` and CLI `--file` are supported for a single
@@ -621,9 +607,9 @@ Related: parser-pipeline, internal-runtime-functions, documentation-model-types
 - Search is scoped to the active document.
 - Documentation search returns concepts, function entries, and type entries.
 - Project plan search returns plan sections and searches section summaries,
-  structured fields, and detail blocks.
-- Project plan pages render section summaries, structured fields, intro
-  Markdown, and `###` detail blocks.
+  intro Markdown, and detail blocks.
+- Project plan pages render section summaries, free-form intro Markdown, and
+  `###` detail blocks.
 - Task tree search returns tasks.
 - Task tree pages render a pannable, zoomable SVG graph with task statuses,
   decomposition edges, dependency edges, and a right-side detail drawer.
@@ -672,10 +658,10 @@ Behavior:
 #### Function: `parsePlanSection`
 Kind: function
 Signature: `parsePlanSection(block: string): PlanSection`
-Description: Parse one `## Plan:` block into a structured technical project-plan section.
+Description: Parse one `## Plan:` block into a technical project-plan section.
 Behavior:
 - Reads `ID`, `Area`, and optional `Summary`.
-- Keeps additional leading fields as structured plan details.
+- Keeps non-metadata section content as Markdown.
 - Parses body content before the first `###` heading as intro Markdown.
 - Parses each `###` heading as a `PlanDetailBlock`.
 
@@ -685,16 +671,15 @@ Signature: `parsePlanDetailBlock(block: string, usedIds: Set<string>): PlanDetai
 Description: Parse one `###` technical detail block inside a project-plan section.
 Behavior:
 - Derives a unique block ID from the heading.
-- Keeps leading fields as structured detail data.
-- Parses the remaining body as Markdown content.
+- Keeps the block body as Markdown content.
 
-#### Function: `parseLeadingReferenceFields`
+#### Function: `parsePlanMetadataFields`
 Kind: function
-Signature: `parseLeadingReferenceFields(lines: string[]): { fields: FunctionField[]; bodyStartIndex: number }`
-Description: Parse structured fields at the start of a plan section or detail block without consuming ordinary Markdown body content.
+Signature: `parsePlanMetadataFields(lines: string[]): { metadata: Record<string, string>; bodyStartIndex: number }`
+Description: Parse the small metadata header at the start of a project-plan section.
 Behavior:
-- Accepts technical field labels containing letters, digits, spaces, slash, ampersand, parentheses, underscore, or hyphen.
-- Stops when a non-field Markdown line starts.
+- Accepts only `ID`, `Area`, and `Summary` as project-plan metadata.
+- Stops before the first non-metadata line so it can render as Markdown body content.
 - Returns the index where body parsing should continue.
 
 #### Function: `parseYamlTaskNode`
@@ -702,10 +687,9 @@ Kind: function
 Signature: `parseYamlTaskNode(rawTask: RawTaskNode, parentId: string | undefined, usedIds: Set<string>): { task: TaskNode; children: RawTaskNode[] }`
 Description: Parse one YAML task object into a task node before derived graph relationships are applied.
 Behavior:
-- Reads `id`, `title`, `status`, `area`, `dependsOn`, `fields`, `details`,
-  and nested `children`.
+- Reads `id`, `title`, `status`, `area`, `dependsOn`, `details`, and nested
+  `children`.
 - Normalizes status aliases such as `doing` to `in-progress` and `completed` to `done`.
-- Keeps additional fields as structured task details.
 - Parses `details` as Markdown content.
 
 #### Function: `resolveDocumentDirectoryPath`

@@ -106,7 +106,6 @@ export type PlanSection = {
   area: string;
   areaSlug: string;
   summary: string;
-  fields: FunctionField[];
   content: string;
   contentBlocks: ConceptContentBlock[];
   detailBlocks: PlanDetailBlock[];
@@ -115,7 +114,6 @@ export type PlanSection = {
 export type PlanDetailBlock = {
   id: string;
   title: string;
-  fields: FunctionField[];
   content: string;
   contentBlocks: ConceptContentBlock[];
 };
@@ -150,7 +148,6 @@ export type TaskNode = {
   childrenIds: string[];
   blockingTaskIds: string[];
   depth: number;
-  fields: FunctionField[];
   content: string;
   contentBlocks: ConceptContentBlock[];
 };
@@ -477,69 +474,39 @@ function parseReferenceFields(lines: string[]) {
   return fields;
 }
 
-function parseLeadingReferenceFields(lines: string[]) {
-  const fields: FunctionField[] = [];
-  let currentField: FunctionField | null = null;
+function parsePlanMetadataFields(lines: string[]) {
+  const metadata: Record<string, string> = {};
+  const planMetadataLabels = new Set(["id", "area", "summary"]);
   let bodyStartIndex = 0;
-
-  const pushCurrentField = () => {
-    if (!currentField) {
-      return;
-    }
-
-    fields.push(finalizeFunctionField(currentField));
-    currentField = null;
-  };
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
 
     if (line.trim() === "") {
-      pushCurrentField();
       bodyStartIndex = index + 1;
       break;
     }
 
     const fieldMatch = referenceFieldPattern.exec(line);
 
-    if (fieldMatch) {
-      pushCurrentField();
-      currentField = {
-        label: fieldMatch[1],
-        value: fieldMatch[2].trim(),
-        items: [],
-      };
-      bodyStartIndex = index + 1;
-      continue;
+    if (!fieldMatch) {
+      bodyStartIndex = index;
+      break;
     }
 
-    const listItemMatch = /^\s*-\s+(.*)$/.exec(line);
+    const normalizedLabel = normalizeFieldLabel(fieldMatch[1]);
 
-    if (currentField && listItemMatch) {
-      currentField.items.push(listItemMatch[1].trim());
-      bodyStartIndex = index + 1;
-      continue;
+    if (!planMetadataLabels.has(normalizedLabel)) {
+      bodyStartIndex = index;
+      break;
     }
 
-    if (currentField && /^\s+/.test(line)) {
-      currentField.value = currentField.value
-        ? `${currentField.value}\n${line.trim()}`
-        : line.trim();
-      bodyStartIndex = index + 1;
-      continue;
-    }
-
-    pushCurrentField();
-    bodyStartIndex = index;
-    break;
-  }
-
-  if (currentField) {
-    pushCurrentField();
+    metadata[normalizedLabel] = fieldMatch[2].trim();
+    bodyStartIndex = index + 1;
   }
 
   return {
-    fields,
+    metadata,
     bodyStartIndex,
   };
 }
@@ -835,11 +802,10 @@ function parseDocumentationDocument(raw: string, documentPath: string): Document
 function parsePlanSection(block: string): PlanSection {
   const lines = block.split("\n");
   const title = lines[0].replace(/^## Plan:\s+/, "").trim();
-  const { fields, bodyStartIndex } = parseLeadingReferenceFields(lines.slice(1));
-  const area = getFunctionFieldText(fields, "Area") || "Plan";
-  const summary = getFunctionFieldText(fields, "Summary");
+  const { metadata, bodyStartIndex } = parsePlanMetadataFields(lines.slice(1));
+  const area = metadata.area || "Plan";
+  const summary = metadata.summary || "";
   const content = lines.slice(bodyStartIndex + 1).join("\n").trim();
-  const hiddenFieldLabels = new Set(["id", "area", "summary"]);
   const planDetailBlocks = splitPlanDetailBlocks(content);
   const detailBlockIds = new Set<string>();
   const detailBlocks = planDetailBlocks.map((detailBlock) =>
@@ -853,12 +819,11 @@ function parsePlanSection(block: string): PlanSection {
       : content;
 
   return {
-    id: getFunctionFieldText(fields, "ID") || slugify(title),
+    id: metadata.id || slugify(title),
     title,
     area,
     areaSlug: slugify(area),
     summary,
-    fields: fields.filter((field) => !hiddenFieldLabels.has(normalizeFieldLabel(field.label))),
     content,
     contentBlocks: parseMarkdownBlocks(introContent),
     detailBlocks,
@@ -868,14 +833,12 @@ function parsePlanSection(block: string): PlanSection {
 function parsePlanDetailBlock(block: string, usedIds: Set<string>): PlanDetailBlock {
   const lines = block.split("\n");
   const title = lines[0].replace(/^###\s+/, "").trim();
-  const { fields, bodyStartIndex } = parseLeadingReferenceFields(lines.slice(1));
-  const content = lines.slice(bodyStartIndex + 1).join("\n").trim();
+  const content = lines.slice(1).join("\n").trim();
   const baseId = slugify(title) || "detail";
 
   return {
     id: ensureUniqueId(baseId, usedIds),
     title,
-    fields,
     content,
     contentBlocks: parseMarkdownBlocks(content),
   };
@@ -990,7 +953,6 @@ type RawTaskNode = Record<string, unknown> & {
   dependsOn?: unknown;
   depends_on?: unknown;
   details?: unknown;
-  fields?: unknown;
   children?: unknown;
 };
 
@@ -1027,79 +989,6 @@ function taskYamlListValue(value: unknown): string[] {
     .filter(Boolean);
 }
 
-function humanizeYamlFieldLabel(value: string) {
-  return value
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function yamlValueToFunctionField(label: string, value: unknown): FunctionField | undefined {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-
-  if (Array.isArray(value)) {
-    return finalizeFunctionField({
-      label,
-      value: "",
-      items: value.map((item) => stringifyTaskYamlScalar(item)),
-    });
-  }
-
-  if (isRecord(value)) {
-    return finalizeFunctionField({
-      label,
-      value: JSON.stringify(value, null, 2),
-      items: [],
-    });
-  }
-
-  return finalizeFunctionField({
-    label,
-    value: stringifyTaskYamlScalar(value),
-    items: [],
-  });
-}
-
-function getYamlTaskFields(rawTask: RawTaskNode) {
-  const reservedKeys = new Set([
-    "id",
-    "title",
-    "status",
-    "area",
-    "dependsOn",
-    "depends_on",
-    "details",
-    "children",
-    "fields",
-  ]);
-  const fields: FunctionField[] = [];
-
-  if (isRecord(rawTask.fields)) {
-    for (const [label, value] of Object.entries(rawTask.fields)) {
-      const field = yamlValueToFunctionField(humanizeYamlFieldLabel(label), value);
-
-      if (field) {
-        fields.push(field);
-      }
-    }
-  }
-
-  for (const [key, value] of Object.entries(rawTask)) {
-    if (reservedKeys.has(key)) {
-      continue;
-    }
-
-    const field = yamlValueToFunctionField(humanizeYamlFieldLabel(key), value);
-
-    if (field) {
-      fields.push(field);
-    }
-  }
-
-  return fields;
-}
-
 function parseYamlTaskNode(
   rawTask: RawTaskNode,
   parentId: string | undefined,
@@ -1129,7 +1018,6 @@ function parseYamlTaskNode(
       childrenIds: [],
       blockingTaskIds: [],
       depth: 0,
-      fields: getYamlTaskFields(rawTask),
       content,
       contentBlocks: parseMarkdownBlocks(content),
     } satisfies TaskNode,

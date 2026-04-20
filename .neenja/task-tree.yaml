@@ -18,11 +18,12 @@ tasks:
         title: Parse task tree documents
         status: done
         area: Parser
-        fields:
-          Acceptance Notes:
-            - Recognize the original Markdown task tree by filename.
-            - Parse task metadata and graph relationships.
-            - Derive child IDs, reverse dependency IDs, graph edges, status summary, and progress.
+        details: |-
+          Acceptance notes:
+
+          - Recognize the original Markdown task tree by filename.
+          - Parse task metadata and graph relationships.
+          - Derive child IDs, reverse dependency IDs, graph edges, status summary, and progress.
 
       - id: include-task-trees-in-cli-discovery
         title: Include task trees in CLI document discovery
@@ -40,12 +41,13 @@ tasks:
         area: Reader
         dependsOn:
           - parse-task-tree-documents
-        fields:
-          Acceptance Notes:
-            - Add a navbar tab when a task tree exists.
-            - Route task tree entries under `/task-tree/:taskId/`.
-            - Group sidebar navigation by task `Area`.
-            - Render task status, progress, graph relationships, and Markdown task body.
+        details: |-
+          Acceptance notes:
+
+          - Add a navbar tab when a task tree exists.
+          - Route task tree entries under `/task-tree/:taskId/`.
+          - Group sidebar navigation by task `Area`.
+          - Render task status, progress, graph relationships, and Markdown task body.
 
       - id: update-planning-and-sync-skills
         title: Update planning and sync skills
@@ -96,11 +98,12 @@ tasks:
         title: Parse YAML task trees
         status: done
         area: Parser
-        fields:
-          Acceptance Notes:
-            - Recognize `task-tree.yaml` and `task-tree.yml`.
-            - Read top-level metadata without requiring `summary`.
-            - Flatten nested `children` into reader nodes and graph edges.
+        details: |-
+          Acceptance notes:
+
+          - Recognize `task-tree.yaml` and `task-tree.yml`.
+          - Read top-level metadata without requiring `summary`.
+          - Flatten nested `children` into reader nodes and graph edges.
 
       - id: render-fullscreen-task-graph
         title: Render fullscreen task graph
@@ -108,11 +111,12 @@ tasks:
         area: Reader
         dependsOn:
           - parse-yaml-task-tree
-        fields:
-          Acceptance Notes:
-            - Use the full viewport as the graph workspace.
-            - Support panning and zooming.
-            - Show every task and all decomposition/dependency edges.
+        details: |-
+          Acceptance notes:
+
+          - Use the full viewport as the graph workspace.
+          - Support panning and zooming.
+          - Show every task and all decomposition/dependency edges.
 
       - id: open-task-detail-drawer
         title: Open task detail drawer
@@ -120,11 +124,12 @@ tasks:
         area: Reader
         dependsOn:
           - render-fullscreen-task-graph
-        fields:
-          Acceptance Notes:
-            - Open details on the right when a task is selected.
-            - Keep the drawer closable with an icon button.
-            - Let the drawer cover most or all of the graph on mobile.
+        details: |-
+          Acceptance notes:
+
+          - Open details on the right when a task is selected.
+          - Keep the drawer closable with an icon button.
+          - Let the drawer cover most or all of the graph on mobile.
 
       - id: refresh-task-tree-docs-and-skills
         title: Refresh task tree docs and skills
@@ -133,7 +138,8 @@ tasks:
         dependsOn:
           - parse-yaml-task-tree
           - render-fullscreen-task-graph
-        fields:
-          Acceptance Notes:
-            - Update README, documentation, project plan, init skill, sync skill, and bootstrap skill.
-            - Replace Markdown task tree examples with YAML tree examples.
+        details: |-
+          Acceptance notes:
+
+          - Update README, documentation, project plan, init skill, sync skill, and bootstrap skill.
+          - Replace Markdown task tree examples with YAML tree examples.

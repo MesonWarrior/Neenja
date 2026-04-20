@@ -617,45 +617,6 @@ input[type="search"]::-webkit-search-cancel-button {
   color: var(--ink);
 }
 
-.plan-fields {
-  display: grid;
-  gap: 10px;
-  margin: 16px 0 0;
-}
-
-.plan-field {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border);
-}
-
-.plan-field dt {
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.plan-field dd {
-  margin: 0;
-  color: var(--ink);
-  font-size: 0.92rem;
-  line-height: 1.6;
-}
-
-.plan-field-inline,
-.plan-field-rich-text > :last-child {
-  margin: 0;
-}
-
-.plan-field-list {
-  margin: 8px 0 0;
-  padding-left: 1.2rem;
-}
-
 .plan-detail-blocks {
   display: grid;
   gap: 26px;
@@ -681,10 +642,6 @@ input[type="search"]::-webkit-search-cancel-button {
   font-style: italic;
   font-weight: 400;
   color: var(--ink);
-}
-
-.reader-body .plan-detail-header .plan-fields {
-  margin-top: 12px;
 }
 
 .plan-detail-body > :last-child {

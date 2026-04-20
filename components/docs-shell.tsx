@@ -8,14 +8,13 @@ import {
   FunctionReferenceSection,
   TypeReferenceSection,
 } from "./function-reference";
-import { InlineMarkdown, MarkdownContent } from "./markdown-content";
+import { MarkdownContent } from "./markdown-content";
 import type {
   Concept,
   ConceptFunction,
   ConceptType,
   DocumentationDocument,
   DocumentCollection,
-  FunctionField,
   PlanSection,
   ProjectPlanDocument,
   ReaderDocument,
@@ -172,17 +171,11 @@ function planSectionMatchesSearch(section: PlanSection, query: string) {
     section.title,
     section.area,
     section.summary,
-    section.fields
-      .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
-      .join("\n"),
     section.contentBlocks.map((block) => block.content).join("\n"),
     section.detailBlocks
       .map((detailBlock) =>
         [
           detailBlock.title,
-          detailBlock.fields
-            .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
-            .join("\n"),
           detailBlock.contentBlocks.map((block) => block.content).join("\n"),
         ].join("\n"),
       )
@@ -205,9 +198,6 @@ function taskMatchesSearch(task: TaskNode, query: string) {
     task.statusLabel,
     task.parentId ?? "",
     task.dependsOn.join(" "),
-    task.fields
-      .map((field) => [field.label, field.value, field.items.join(" ")].filter(Boolean).join(" "))
-      .join("\n"),
     task.contentBlocks.map((block) => block.content).join("\n"),
   ]
     .join("\n")
@@ -282,55 +272,6 @@ function ExpandableText({
   );
 }
 
-function PlanFieldValue({ field }: { field: FunctionField }) {
-  const hasMultilineValue = field.value.includes("\n");
-
-  return (
-    <>
-      {field.value ? (
-        hasMultilineValue ? (
-          <div className="plan-field-rich-text">
-            <MarkdownContent content={field.value} />
-          </div>
-        ) : (
-          <p className="plan-field-inline">
-            <InlineMarkdown content={field.value} />
-          </p>
-        )
-      ) : null}
-
-      {field.items.length > 0 ? (
-        <ul className="plan-field-list">
-          {field.items.map((item, index) => (
-            <li key={`${field.label}-${item}-${index}`}>
-              <InlineMarkdown content={item} />
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </>
-  );
-}
-
-function PlanFields({ fields }: { fields: FunctionField[] }) {
-  if (fields.length === 0) {
-    return null;
-  }
-
-  return (
-    <dl className="plan-fields">
-      {fields.map((field) => (
-        <div key={field.label} className="plan-field">
-          <dt>{field.label}</dt>
-          <dd>
-            <PlanFieldValue field={field} />
-          </dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
 function PlanDetailBlocks({ section }: { section: PlanSection }) {
   if (section.detailBlocks.length === 0) {
     return null;
@@ -342,7 +283,6 @@ function PlanDetailBlocks({ section }: { section: PlanSection }) {
         <section key={detailBlock.id} className="plan-detail-block">
           <header className="plan-detail-header">
             <h3>{detailBlock.title}</h3>
-            <PlanFields fields={detailBlock.fields} />
           </header>
 
           {detailBlock.contentBlocks.length > 0 ? (
@@ -960,7 +900,6 @@ function TaskDetailDrawer({
             <span>{task.dependsOn.length} dependencies</span>
           </div>
 
-          <PlanFields fields={task.fields} />
         </header>
 
         <div className="reader-body task-detail-body">
@@ -1727,8 +1666,6 @@ export function DocsShell({
                 {selectedPlanSection.summary ? (
                   <p className="reader-summary">{selectedPlanSection.summary}</p>
                 ) : null}
-
-                <PlanFields fields={selectedPlanSection.fields} />
               </header>
 
               <div className="reader-body">

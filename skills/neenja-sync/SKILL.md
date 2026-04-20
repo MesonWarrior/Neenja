@@ -98,24 +98,19 @@ preferences: <optional single-line user technical preferences>
 ID: <stable-machine-id>
 Area: <Architecture|Runtime|Frontend|Backend|Data Contracts|Integrations|Infrastructure|Quality|Skills|Decisions>
 Summary: <one sentence technical summary>
-<Additional Field>: <structured value>
-<List Field>:
-- <item>
-- <item>
 
-<Optional intro Markdown.>
+<Free-form technical Markdown. Use paragraphs, bullets, tables, and code
+blocks when they make the implementation intent clearer.>
 
 ### <Technical Detail Block>
-<Additional Field>: <structured value>
-<List Field>:
-- <item>
-
-<Optional Markdown body for the detail block.>
+<Free-form Markdown body for the detail block.>
 ```
 
 The plan should capture architecture, module boundaries, contracts,
 integrations, constraints, and explicit user technical decisions. Do not use it
 as an implementation log. Task progress belongs in `./.neenja/task-tree.yaml`.
+Only `ID`, `Area`, and `Summary` are structured plan metadata. Write all other
+technical content as normal Markdown instead of custom structured field blocks.
 
 ## Required task tree file format
 
@@ -135,9 +130,6 @@ tasks:
     area: <Project|Frontend|Backend|Data|Infrastructure|Quality|Delivery|Docs|Skills|other useful area>
     dependsOn:
       - <optional dependency task ID>
-    fields:
-      <Additional Field>:
-        - <item>
     details: |-
       <optional Markdown task detail, acceptance notes, or implementation hints>
     children:
