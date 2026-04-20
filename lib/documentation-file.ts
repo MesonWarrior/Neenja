@@ -1236,11 +1236,16 @@ function getDocumentKindByFileName(fileName: string): DocumentKind | undefined {
   return undefined;
 }
 
+function shouldIncludeDocumentKind(kind: DocumentKind, visibility: DocumentationVisibility) {
+  return visibility === "private" || kind === "documentation";
+}
+
 async function resolveRecognizedDocumentFiles(): Promise<RecognizedDocumentFile[]> {
   const configuredDocumentationPath = getConfiguredDocumentationPath();
   const resolvedConfiguredDocumentationPath = configuredDocumentationPath
     ? path.resolve(configuredDocumentationPath)
     : undefined;
+  const visibility = resolveDocumentationVisibility();
 
   if (resolvedConfiguredDocumentationPath) {
     return [
@@ -1271,7 +1276,7 @@ async function resolveRecognizedDocumentFiles(): Promise<RecognizedDocumentFile[
 
       const kind = getDocumentKindByFileName(entry.name);
 
-      if (!kind) {
+      if (!kind || !shouldIncludeDocumentKind(kind, visibility)) {
         continue;
       }
 

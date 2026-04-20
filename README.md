@@ -22,7 +22,8 @@ Neenja is a tool that allows you to automatically generate project documentation
    By default it shows the full docs set, including internal concepts, and
    exposes project plan or task tree tabs when those files exist.
 5. Run `npx neenja build` to generate a static reader bundle into
-   `.neenja/build`. By default it builds only the public documentation subset.
+   `.neenja/build`. By default it builds only public documentation and omits
+   project plan and task tree data.
 
 You can also point the UI and build commands to a custom documents folder:
 
@@ -35,7 +36,9 @@ The reader recognizes `documentation.md`, `project-plan.md`, and
 `task-tree.yaml` inside the documents folder. The legacy `--file` flag still
 works for older single-file documentation setups.
 
-By default, `build` only builds public concepts, and `serve` shows both public and private ones, but you can change the display of private concepts using --public to --private:
+By default, `build` runs in public mode, while `serve` runs in private mode.
+Public mode includes only public concepts from documentation. Private mode also
+includes private concepts, the project plan, and the task tree:
 
 ```bash
 npx neenja serve --public

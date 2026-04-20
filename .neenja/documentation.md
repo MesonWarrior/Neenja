@@ -50,15 +50,16 @@ After the skills are installed, `neenja-sync` should be applied by the model
 automatically on later tasks so documentation stays current.
 
 ### Rendering model
-- `serve` reads `.neenja/` by default and shows the full documentation set,
-  including private documentation concepts.
+- `serve` reads `.neenja/` by default and shows the full private documentation
+  set, including private documentation concepts, project plans, and task trees.
 - `build` reads the same folder and emits only public documentation concepts by
   default, unless `--private` is passed.
-- Project plan documents are not privacy-filtered; every `## Plan:` section in
-  the plan file is rendered.
-- Task tree documents are not privacy-filtered; every task in the YAML tree is
-  rendered in a fullscreen graph workspace with status, progress,
-  decomposition, and dependency links.
+- Public mode, used by `build` by default and by `serve --public`, renders only
+  documentation documents with public concepts. Project plans and task trees are
+  private developer documents and are omitted from public routes and static
+  output.
+- Private mode, used by `serve` by default and by `build --private`, includes
+  project-plan pages and task-tree pages whenever those files exist.
 - The header navbar switches between recognized document types.
 - Documentation and project-plan pages use a sidebar. Task-tree pages use the
   whole viewport as the graph workspace.
@@ -290,14 +291,17 @@ Description: Start the local reader UI against a Neenja documents folder.
 Parameters:
 - `--dir <path>`: `string` - Explicit path to a Neenja documents folder.
 - `--file <path>`: `string` - Legacy path to one documentation file.
-- `--private`: `boolean` - Include private concepts in rendered documentation.
-- `--public`: `boolean` - Restrict rendered documentation concepts to public concepts only.
+- `--private`: `boolean` - Include private concepts, project plan pages, and task tree pages.
+- `--public`: `boolean` - Render only public documentation concepts and omit project plan and task tree data.
 Behavior:
 - Resolves `.neenja/` by default.
 - Recognizes `documentation.md`, `project-plan.md`, and `task-tree.yaml` by filename.
 - Falls back to `./neenja.knowledge.md` when no folder documentation file exists.
 - Launches Astro in dev mode.
-- Defaults to showing the full documentation set, including private concepts.
+- Defaults to showing the full private documentation set, including private
+  concepts, project plans, and task trees.
+- With `--public`, renders only public documentation concepts and omits project
+  plans and task trees.
 
 #### Function: `neenja build`
 Kind: cli command
@@ -306,14 +310,16 @@ Description: Build the reader as a static site in `.neenja/build`.
 Parameters:
 - `--dir <path>`: `string` - Explicit path to a Neenja documents folder.
 - `--file <path>`: `string` - Legacy path to one documentation file.
-- `--private`: `boolean` - Build the full documentation set, including private concepts.
-- `--public`: `boolean` - Build only the public documentation subset.
+- `--private`: `boolean` - Build the full private documentation set, including private concepts, project plan pages, and task tree pages.
+- `--public`: `boolean` - Build only public documentation concepts and omit project plan and task tree data.
 Behavior:
 - Uses the same parser and renderer as `serve`.
 - Resolves `.neenja/` by default.
 - Defaults to the public documentation subset so generated static docs can be published safely.
-- Includes project plan routes whenever `.neenja/project-plan.md` exists.
-- Includes task tree routes whenever `.neenja/task-tree.yaml` exists.
+- Omits project plan and task tree routes in public mode because those files
+  are private developer data.
+- Includes project plan and task tree routes only when `--private` is passed
+  and the source files exist.
 
 #### Function: `neenja build-github`
 Kind: cli command
@@ -324,8 +330,9 @@ Parameters:
 - `--page <path>`: `string` - Base path under that origin.
 - `--dir <path>`: `string` - Explicit path to a Neenja documents folder.
 - `--file <path>`: `string` - Legacy path to one documentation file.
-- `--private`: `boolean` - Include private concepts in the build.
-- `--public`: `boolean` - Restrict the build to the public documentation subset.
+- `--private`: `boolean` - Include private concepts, project plan pages, and task tree pages in the build.
+- `--public`: `boolean` - Restrict the build to public documentation concepts
+  and omit project plan and task tree data.
 
 ## Concept: Documentation Model Types
 ID: documentation-model-types
@@ -564,9 +571,11 @@ reader can still fall back to the legacy root file `./neenja.knowledge.md`.
 
 ### Visibility defaults
 - `NEENJA_DOCS_VISIBILITY=private` means documentation keeps both public and
-  private concepts.
+  private concepts, and the collection can include project-plan and task-tree
+  documents.
 - `NEENJA_DOCS_VISIBILITY=public` means only public documentation concepts
-  survive the final document model.
+  survive the final document model. Project-plan and task-tree documents are
+  omitted before parsing.
 - When no explicit visibility flag is provided, dev mode defaults to the full
   set and production mode defaults to the public subset.
 

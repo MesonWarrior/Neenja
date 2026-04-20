@@ -119,13 +119,14 @@ Fields:
 - Prefer a few strong concepts over many shallow concepts.
 - Merge duplicates instead of creating overlapping entries.
 
-### documentation.md what to avoid
+### documentation.md rules
 
-- vague statements with no implementation grounding
-- duplicating the same idea in multiple concepts
-- unstable IDs such as `concept-1`
-- undocumented assumptions
-- spreading documentation across multiple files
+- Avoid vague statements with no implementation grounding
+- Avoid duplicating the same idea in multiple concepts
+- Do not use unstable IDs such as `concept-1`
+- Do not make undocumented assumptions
+- Avoid spreading documentation across multiple files
+- Do not make changes to the documentation unless they're truly necessary. Do not try to make as many changes as possible. Apply them only to the concepts intended for this, which already describe the concept related to the change or are connected to it. If none exist, create a new one.
 
 ## Repository analysis workflow
 

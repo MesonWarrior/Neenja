@@ -29,13 +29,14 @@ Commands:
 Options:
   -d, --dir <path>   Explicit path to the Neenja documents folder
   -f, --file <path>  Legacy: explicit path to one documentation file
-  --private          Include private concepts in the rendered documentation
-  --public           Render only public concepts
+  --private          Include private concepts, project plan, and task tree
+  --public           Render only public documentation concepts
   -h, --help         Show this help
 
 Notes:
   - If no folder is provided, Neenja reads ./${defaultDocumentsDirectoryDisplayPath}.
   - Recognized documents are ${defaultDocumentationFilePath}, ${defaultProjectPlanFilePath}, and ${defaultTaskTreeFilePath}.
+  - Public mode includes only documentation, project plan and task tree are private developer documents.
   - If the documents folder has no documentation file, Neenja falls back to
     ${legacyRootDocumentationFileDisplayPath}.
 
