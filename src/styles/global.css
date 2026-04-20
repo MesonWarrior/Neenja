@@ -917,7 +917,7 @@ input[type="search"]::-webkit-search-cancel-button {
   gap: 10px;
   margin: 10px 0 0 18px;
   padding: 0 0 0 18px;
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
 }
 
 .task-graph-item {
@@ -930,7 +930,6 @@ input[type="search"]::-webkit-search-cancel-button {
   gap: 8px;
   padding: 12px 14px;
   border: 1px solid var(--border);
-  border-left-width: 3px;
   border-radius: 14px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
@@ -942,7 +941,6 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 
 .task-graph-node:hover {
-  transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -1063,7 +1061,7 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 
 .task-workspace-toolbar .task-progress-panel {
-  width: min(560px, calc(100vw - 148px));
+  width: min(420px, calc(100vw - 148px));
   margin: 0;
   border-color: rgba(255, 255, 255, 0.11);
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.26);
@@ -1162,11 +1160,13 @@ input[type="search"]::-webkit-search-cancel-button {
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
   cursor: pointer;
   transition:
-    background 140ms ease;
+    background 140ms ease
+    border 140ms ease;
 }
 
 .task-graph-card:hover {
   background: var(--panel-strong);
+  border-color: var(--accent) !important;
 }
 
 .task-graph-card.active {
@@ -1177,19 +1177,19 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 
 .task-graph-card.status-done {
-  border-left-color: rgba(74, 222, 128, 0.82);
+  border-color: rgba(74, 222, 128, 0.82);
 }
 
 .task-graph-card.status-in-progress {
-  border-left-color: rgba(96, 165, 250, 0.86);
+  border-color: rgba(96, 165, 250, 0.86);
 }
 
 .task-graph-card.status-blocked {
-  border-left-color: rgba(248, 113, 113, 0.84);
+  border-color: rgba(248, 113, 113, 0.84);
 }
 
 .task-graph-card.status-review {
-  border-left-color: rgba(250, 204, 21, 0.82);
+  border-color: rgba(250, 204, 21, 0.82);
 }
 
 .task-node-footer {
@@ -1218,7 +1218,7 @@ input[type="search"]::-webkit-search-cancel-button {
   bottom: 0;
   z-index: 42;
   max-width: 450px;
-  border-left: 1px solid var(--border);
+  border: 1px solid var(--border);
   background: var(--panel);
   box-shadow: -28px 0 80px rgba(0, 0, 0, 0.36);
 }
