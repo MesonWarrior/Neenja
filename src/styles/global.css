@@ -944,6 +944,8 @@ input[type="search"]::-webkit-search-cancel-button {
   font-size: 0.96rem;
   font-weight: 700;
   line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .task-node-summary {

@@ -434,68 +434,186 @@ function TaskRelations({
 }
 
 const graphNodeWidth = 260;
-const graphNodeHeight = 92;
+const graphNodeMinHeight = 92;
 const graphLevelGap = 360;
 const graphSiblingGap = 34;
 const graphRootGap = 74;
+const graphNodeTitleCharactersPerLine = 27;
+const graphNodeTitleLineHeight = 21;
+const graphNodeVerticalPadding = 28;
+const graphNodeContentGap = 8;
+const graphNodeFooterHeight = 22;
 
 type TaskGraphPosition = {
   x: number;
   y: number;
+  height: number;
 };
 
-type TaskGraphTransform = TaskGraphPosition & {
+type TaskGraphTransform = {
+  x: number;
+  y: number;
   scale: number;
 };
 
-function buildTaskGraphLayout(document: TaskTreeDocument) {
-  const positions: Record<string, TaskGraphPosition> = {};
-  let cursorY = 0;
+function countTaskGraphTextCharacters(value: string) {
+  return Array.from(value.trim()).length;
+}
 
-  const placeTask = (taskId: string, depth: number, seenIds = new Set<string>()) => {
+function estimateTaskGraphTitleLineCount(title: string) {
+  const maxCharactersPerLine = Math.max(1, graphNodeTitleCharactersPerLine);
+  const words = title.trim().split(/\s+/).filter(Boolean);
+
+  if (words.length === 0) {
+    return 1;
+  }
+
+  let lineCount = 1;
+  let currentLineLength = 0;
+
+  for (const word of words) {
+    const wordLength = countTaskGraphTextCharacters(word);
+
+    if (wordLength === 0) {
+      continue;
+    }
+
+    if (currentLineLength === 0) {
+      lineCount += Math.max(0, Math.ceil(wordLength / maxCharactersPerLine) - 1);
+      currentLineLength = wordLength % maxCharactersPerLine || maxCharactersPerLine;
+      continue;
+    }
+
+    if (wordLength > maxCharactersPerLine) {
+      lineCount += Math.ceil(wordLength / maxCharactersPerLine);
+      currentLineLength = wordLength % maxCharactersPerLine || maxCharactersPerLine;
+      continue;
+    }
+
+    if (currentLineLength + 1 + wordLength <= maxCharactersPerLine) {
+      currentLineLength += 1 + wordLength;
+      continue;
+    }
+
+    lineCount += 1;
+    currentLineLength = wordLength;
+  }
+
+  return lineCount;
+}
+
+function getEstimatedTaskGraphNodeHeight(task: TaskNode) {
+  const titleHeight = estimateTaskGraphTitleLineCount(task.title) * graphNodeTitleLineHeight;
+  const contentHeight =
+    graphNodeVerticalPadding + graphNodeContentGap + graphNodeFooterHeight + titleHeight;
+
+  return Math.max(graphNodeMinHeight, contentHeight);
+}
+
+function getTaskGraphNodeHeight(task: TaskNode, measuredNodeHeights: Record<string, number>) {
+  return Math.max(
+    graphNodeMinHeight,
+    measuredNodeHeights[task.id] ?? getEstimatedTaskGraphNodeHeight(task),
+  );
+}
+
+function buildTaskGraphLayout(
+  document: TaskTreeDocument,
+  measuredNodeHeights: Record<string, number> = {},
+) {
+  const positions: Record<string, TaskGraphPosition> = {};
+  const subtreeHeightCache = new Map<string, number>();
+
+  const getChildIds = (task: TaskNode) => {
+    return task.childrenIds.filter((childId) => document.tasksById[childId]);
+  };
+
+  const getSubtreeHeight = (taskId: string, seenIds = new Set<string>()): number => {
     if (seenIds.has(taskId)) {
-      return cursorY;
+      return 0;
+    }
+
+    const cachedHeight = subtreeHeightCache.get(taskId);
+
+    if (cachedHeight !== undefined) {
+      return cachedHeight;
     }
 
     const task = document.tasksById[taskId];
 
     if (!task) {
-      return cursorY;
+      return 0;
     }
 
     const nextSeenIds = new Set(seenIds);
     nextSeenIds.add(taskId);
-    const childIds = task.childrenIds.filter((childId) => document.tasksById[childId]);
-    const startY = cursorY;
+    const childIds = getChildIds(task);
+    const childStackHeight = childIds.reduce((totalHeight, childId, index) => {
+      const gap = index === 0 ? 0 : graphSiblingGap;
 
-    if (childIds.length === 0) {
-      positions[taskId] = {
-        x: depth * graphLevelGap,
-        y: cursorY,
-      };
-      cursorY += graphNodeHeight + graphSiblingGap;
-      return positions[taskId].y;
+      return totalHeight + gap + getSubtreeHeight(childId, nextSeenIds);
+    }, 0);
+    const subtreeHeight = Math.max(
+      getTaskGraphNodeHeight(task, measuredNodeHeights),
+      childStackHeight,
+    );
+
+    subtreeHeightCache.set(taskId, subtreeHeight);
+    return subtreeHeight;
+  };
+
+  const placeTask = (
+    taskId: string,
+    depth: number,
+    top: number,
+    seenIds = new Set<string>(),
+  ) => {
+    if (seenIds.has(taskId)) {
+      return;
     }
 
-    childIds.forEach((childId) => {
-      placeTask(childId, depth + 1, nextSeenIds);
-    });
+    const task = document.tasksById[taskId];
 
-    const endY = cursorY - graphSiblingGap - graphNodeHeight;
+    if (!task) {
+      return;
+    }
+
+    const nextSeenIds = new Set(seenIds);
+    nextSeenIds.add(taskId);
+    const nodeHeight = getTaskGraphNodeHeight(task, measuredNodeHeights);
+    const subtreeHeight = getSubtreeHeight(taskId, seenIds);
+    const childIds = getChildIds(task);
+    const childStackHeight = childIds.reduce((totalHeight, childId, index) => {
+      const gap = index === 0 ? 0 : graphSiblingGap;
+
+      return totalHeight + gap + getSubtreeHeight(childId, nextSeenIds);
+    }, 0);
+
     positions[taskId] = {
       x: depth * graphLevelGap,
-      y: startY + Math.max(0, endY - startY) / 2,
+      y: top + Math.max(0, (subtreeHeight - nodeHeight) / 2),
+      height: nodeHeight,
     };
 
-    return positions[taskId].y;
+    let childTop = top + Math.max(0, (subtreeHeight - childStackHeight) / 2);
+
+    childIds.forEach((childId) => {
+      const childSubtreeHeight = getSubtreeHeight(childId, nextSeenIds);
+
+      placeTask(childId, depth + 1, childTop, nextSeenIds);
+      childTop += childSubtreeHeight + graphSiblingGap;
+    });
   };
+
+  let cursorY = 0;
 
   document.rootTaskIds.forEach((rootTaskId, index) => {
     if (index > 0) {
       cursorY += graphRootGap;
     }
 
-    placeTask(rootTaskId, 0);
+    placeTask(rootTaskId, 0, cursorY);
+    cursorY += getSubtreeHeight(rootTaskId);
   });
 
   const nodes = document.tasks
@@ -505,13 +623,13 @@ function buildTaskGraphLayout(document: TaskTreeDocument) {
       ...positions[task.id],
     }));
   const maxX = nodes.reduce((current, node) => Math.max(current, node.x), 0);
-  const maxY = nodes.reduce((current, node) => Math.max(current, node.y), 0);
+  const maxY = nodes.reduce((current, node) => Math.max(current, node.y + node.height), 0);
 
   return {
     nodes,
     positions,
     width: maxX + graphNodeWidth,
-    height: maxY + graphNodeHeight,
+    height: maxY,
   };
 }
 
@@ -527,9 +645,9 @@ function getGraphCurvePath(
   } = {},
 ) {
   const startX = from.x + (fromRight ? graphNodeWidth : graphNodeWidth / 2);
-  const startY = from.y + graphNodeHeight / 2;
+  const startY = from.y + from.height / 2;
   const endX = to.x + (toLeft ? 0 : graphNodeWidth / 2);
-  const endY = to.y + graphNodeHeight / 2;
+  const endY = to.y + to.height / 2;
   const controlOffset = Math.max(80, Math.abs(endX - startX) / 2);
 
   return [
@@ -570,14 +688,65 @@ function TaskGraphWorkspace({
   onSelectTask: (taskId: string) => void;
   onCloseTask: () => void;
 }) {
-  const graph = useMemo(() => buildTaskGraphLayout(document), [document]);
+  const [measuredNodeHeights, setMeasuredNodeHeights] = useState<Record<string, number>>({});
+  const graph = useMemo(
+    () => buildTaskGraphLayout(document, measuredNodeHeights),
+    [document, measuredNodeHeights],
+  );
   const viewportRef = useRef<HTMLDivElement>(null);
+  const taskCardRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const isPanningRef = useRef(false);
   const lastPointerRef = useRef({ x: 0, y: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 1, height: 1 });
   const [transform, setTransform] = useState<TaskGraphTransform>({ x: 80, y: 80, scale: 1 });
   const decompositionEdges = document.edges.filter((edge) => edge.kind === "decomposition");
   const dependencyEdges = document.edges.filter((edge) => edge.kind === "dependency");
+
+  useEffect(() => {
+    const syncMeasuredNodeHeights = () => {
+      setMeasuredNodeHeights((currentHeights) => {
+        const nextHeights: Record<string, number> = {};
+        let changed = false;
+
+        for (const task of document.tasks) {
+          const node = taskCardRefs.current[task.id];
+          const measuredHeight = node
+            ? Math.ceil(Math.max(node.scrollHeight + 2, node.getBoundingClientRect().height))
+            : currentHeights[task.id];
+
+          if (measuredHeight !== undefined) {
+            nextHeights[task.id] = measuredHeight;
+          }
+
+          if (currentHeights[task.id] !== measuredHeight) {
+            changed = true;
+          }
+        }
+
+        if (Object.keys(currentHeights).some((taskId) => nextHeights[taskId] === undefined)) {
+          changed = true;
+        }
+
+        return changed ? nextHeights : currentHeights;
+      });
+    };
+
+    syncMeasuredNodeHeights();
+
+    const observer = new ResizeObserver(syncMeasuredNodeHeights);
+
+    for (const task of document.tasks) {
+      const node = taskCardRefs.current[task.id];
+
+      if (node) {
+        observer.observe(node);
+      }
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [document.tasks, graph.nodes]);
 
   const fitGraph = () => {
     const padding = 96;
@@ -830,9 +999,12 @@ function TaskGraphWorkspace({
                   x={node.x}
                   y={node.y}
                   width={graphNodeWidth}
-                  height={graphNodeHeight}
+                  height={node.height}
                 >
                   <button
+                    ref={(element) => {
+                      taskCardRefs.current[node.task.id] = element;
+                    }}
                     type="button"
                     className={
                       selectedTask?.id === node.task.id
