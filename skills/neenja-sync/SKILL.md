@@ -1,19 +1,15 @@
 ---
 name: neenja-sync
-description: Use on every task in a Neenja-enabled repository. Read `.neenja/documentation.md` and, when present, the technical `.neenja/project-plan.md` and `.neenja/task-tree.yaml` before work; align implementation with the plan's architecture constraints and the task tree; update documentation before finishing whenever behavior changed. Respect saved `preferences:` values when they exist.
+description: Use this skill EVERY TIME if the project root contains a `.neenja` folder.
 ---
 
 # Neenja Sync
 
-Use this skill on every normal agent task after the documentation has been
-bootstrapped.
+Use this skill on every task in a project with Neenja.
 
-## Canonical Neenja documents
+## Introduction
 
-- Repo-relative canonical path: `.neenja/documentation.md`
-- Optional project plan path: `.neenja/project-plan.md`
-- Optional task tree path: `.neenja/task-tree.yaml`
-- These files live inside `.neenja/`, alongside the build output.
+This project uses Neenja, a vibecoding framework that enables development with AI agents in a more structured way, with automatic documentation, a project plan, and a task tree with a task tracker.
 
 ## Documentation-first workflow
 
