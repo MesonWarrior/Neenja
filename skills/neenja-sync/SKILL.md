@@ -320,3 +320,4 @@ for a different decomposition:
 - If you are unsure about something, ask the user what they meant before implementing, rather than guessing the most likely option.
 - Do not hesitate to use existing libraries if something can be done more easily and quickly with them.
 - Always clean up unused code. Do not leave behind dead or legacy code for backward compatibility if the project is still in development and has not been released publicly.
+- Do not load documents again if they are already present in your context.
