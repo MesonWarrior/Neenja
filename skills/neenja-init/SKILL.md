@@ -55,7 +55,7 @@ If there is no user preferences regarding documentation, omit the `preferences:`
 ### project-plan.md requirements
 
 1. Technical project plan must live in this one file only.
-2. Write the final documentation directly at `./.neenja/project-plan.md`.
+2. Write the final project plan directly at `./.neenja/project-plan.md`.
 3. Do not create multiple project plan files.
 4. Prefer updating the existing project plan file if it already exists.
 5. Read the user's requests carefully and write them down in the project plan in a structured form.
@@ -90,8 +90,6 @@ blocks when they make the implementation intent clearer.>
 ```
 
 If there is no user preferences regarding project plan, omit the `preferences:` line.
-Only `ID`, `Area`, and `Summary` are structured plan metadata. Write all other
-technical content as normal Markdown instead of custom structured field blocks.
 
 ### project-plan.md content
 
@@ -160,6 +158,21 @@ tasks:
 ```
 
 If there is no user preferences regarding task tree, omit the `preferences:` line.
+
+### task-tree.yaml shape
+
+Write a practical task graph candidate unless the user's brief clearly calls
+for a different decomposition:
+
+- Create one or more root tasks that represent major technical deliverables.
+- Decompose each root task into small tasks that a coding agent can complete.
+- Use nested `children:` to express decomposition under a larger task.
+- Use `dependsOn:` to express ordering or blocking relationships between
+  tasks, including across different parents.
+- Set initial statuses to `todo`.
+- Prefer small, verifiable tasks over vague phases.
+- Include acceptance hints in task `details` when they materially help
+  implementation.
 
 ## Quality bar
 
