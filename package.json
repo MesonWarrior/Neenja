@@ -1,6 +1,6 @@
 {
   "name": "neenja",
-  "version": "0.2.4",
+  "version": "1.0.0",
   "description": "CLI for viewing, and building single-file documentation for coding agents.",
   "bin": {
     "neenja": "./bin/neenja.mjs"
