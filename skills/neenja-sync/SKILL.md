@@ -1,6 +1,6 @@
 ---
 name: neenja-sync
-description: Use this skill EVERY TIME if the project root contains a `.neenja` folder.
+description: Use this skill EVERY TIME if the project root contains a `.neenja` folder. Do not use this skill when /neenja-init or /neenja-bootstrap are being used. Only one of these skills should be used at a time.
 ---
 
 # Neenja Sync
