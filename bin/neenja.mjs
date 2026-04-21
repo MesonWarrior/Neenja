@@ -16,38 +16,194 @@ const defaultDocumentsDirectoryDisplayPath = ".neenja";
 const legacyRootDocumentationFilePath = "neenja.knowledge.md";
 const legacyRootDocumentationFileDisplayPath = "./neenja.knowledge.md";
 const requireFromCli = createRequire(import.meta.url);
+const packageMetadata = requireFromCli("../package.json");
+
+const ansiCodes = {
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
+  gray: "\x1b[90m",
+  orange: "\x1b[38;5;208m",
+};
+
+const packageLabel = (stream) => `🥷 ${accent("Neenja", stream)} v${packageMetadata.version}`;
+
+function shouldUseColor(stream) {
+  if (process.env.NO_COLOR) {
+    return false;
+  }
+
+  if (process.env.FORCE_COLOR) {
+    return process.env.FORCE_COLOR !== "0";
+  }
+
+  if (process.env.TERM === "dumb") {
+    return false;
+  }
+
+  return Boolean(stream.isTTY);
+}
+
+function paint(value, styles, stream = process.stdout) {
+  if (styles.length === 0 || !shouldUseColor(stream)) {
+    return value;
+  }
+
+  return `${styles.map((style) => ansiCodes[style]).join("")}${value}${ansiCodes.reset}`;
+}
+
+function accent(value, stream = process.stdout) {
+  return paint(value, ["bold", "orange"], stream);
+}
+
+function muted(value, stream = process.stdout) {
+  return paint(value, ["gray"], stream);
+}
+
+function badge(label, stream = process.stdout) {
+  return accent(`[${label}]`, stream);
+}
+
+function helpSection(title, stream = process.stdout) {
+  return `✧ ${accent(`${title}`, stream)}`;
+}
+
+function helpCommand(command, stream = process.stdout) {
+  return command.padEnd(18);
+}
+
+function helpOption(option, stream = process.stdout) {
+  return option.padEnd(19);
+}
+
+function helpBullet(text, stream = process.stdout) {
+  return `  ${muted("-", stream)} ${text}`;
+}
+
+function displayProjectPath(projectRoot, targetPath) {
+  const relativePath = path.relative(projectRoot, targetPath);
+
+  if (!relativePath) {
+    return ".";
+  }
+
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    return targetPath;
+  }
+
+  return path.join(".", relativePath);
+}
+
+function getDocumentSourceLabel(projectRoot, target) {
+  return displayProjectPath(projectRoot, target.documentationFilePath ?? target.documentsDirectoryPath);
+}
+
+function formatDetailValue(value, tone, stream = process.stdout) {
+  const toneStyles = {
+    accent: ["bold", "orange"],
+    muted: ["gray"],
+    plain: [],
+  };
+
+  return paint(value, toneStyles[tone] ?? toneStyles.plain, stream);
+}
+
+function logCommandStart(title, details) {
+  const stream = process.stdout;
+  const lines = [
+    "",
+    `${packageLabel(stream)} ${accent(`⇒ ${title}`, stream)}`,
+    ...details.map(({ label, tone = "plain", value }) => (
+      `  ${muted(`${label.padEnd(11)}:`, stream)} ${formatDetailValue(value, tone, stream)}`
+    )),
+    "",
+  ];
+
+  stream.write(`${lines.join("\n")}\n`);
+}
+
+function logCommandEnd(successTitle, exitCode, failureTitle = successTitle) {
+  const isSuccess = exitCode === 0;
+  const stream = isSuccess ? process.stdout : process.stderr;
+  const status = isSuccess ? "ok" : "fail";
+  const symbol = isSuccess ? "✅" : "❌";
+  const message = isSuccess ? successTitle : `${failureTitle} exited with code ${exitCode}`;
+  const lines = [
+    "",
+    `${badge(status, stream)} ${accent(`${symbol} ${message}`, stream)}`,
+  ];
+
+  if (!isSuccess) {
+    lines.push(`  ${muted("Astro output above has the details.", stream)}`);
+  }
+
+  stream.write(`${lines.join("\n")}\n`);
+}
+
+function printError(error) {
+  const stream = process.stderr;
+  const message = error instanceof Error ? error.message : String(error);
+  const [headline = "Unexpected error.", ...details] = message.split("\n");
+  const lines = [
+    `${badge("error", stream)} ❌ ${headline}`,
+    ...details.map((line) => {
+      if (!line) {
+        return "";
+      }
+
+      if (line.startsWith("- ")) {
+        return `  ${muted("-", stream)} ${accent(line.slice(2), stream)}`;
+      }
+
+      return `  ${muted(line, stream)}`;
+    }),
+  ];
+
+  stream.write(`${lines.join("\n")}\n`);
+}
+
+function printVersion() {
+  process.stdout.write(`${packageLabel(process.stdout)}\n`);
+}
 
 function printHelp() {
-  console.log(`neenja <command> [options]
+  const stream = process.stdout;
+  const commandPrefix = packageMetadata.name;
 
-Commands:
-  serve              Start the UI for the Neenja documents folder
-  build              Build the UI
-  build-github       Build for GitHub Pages
-                     Requires: --domain <url> --page <path>
-
-Options:
-  -d, --dir <path>   Explicit path to the Neenja documents folder
-  -f, --file <path>  Legacy: explicit path to one documentation file
-  --private          Include private concepts, project plan, and task tree
-  --public           Render only public documentation concepts
-  -h, --help         Show this help
-
-Notes:
-  - If no folder is provided, Neenja reads ./${defaultDocumentsDirectoryDisplayPath}.
-  - Recognized documents are ${defaultDocumentationFilePath}, ${defaultProjectPlanFilePath}, and ${defaultTaskTreeFilePath}.
-  - Public mode includes only documentation, project plan and task tree are private developer documents.
-  - If the documents folder has no documentation file, Neenja falls back to
-    ${legacyRootDocumentationFileDisplayPath}.
-
-Examples:
-  neenja serve
-  neenja serve --public
-  neenja serve --dir ./some/other/.neenja --port 4010
-  neenja build
-  neenja build --private
-  neenja build-github --domain https://your_name.github.io --page /your_repo/
-`);
+  stream.write(`${[
+    `${packageLabel(stream)} ${muted("CLI", stream)}`,
+    "",
+    helpSection("Usage", stream),
+    `  ${commandPrefix} <command> ${muted("[options]", stream)}`,
+    "",
+    helpSection("Commands", stream),
+    `  ${helpCommand("serve", stream)} Start the local UI reader`,
+    `  ${helpCommand("build", stream)} Build the UI`,
+    `  ${helpCommand("build-github", stream)} Build for GitHub Pages`,
+    `  ${"".padEnd(20)} ${muted("requires", stream)} --domain <url> --page <path>`,
+    "",
+    helpSection("Options", stream),
+    `  ${helpOption("-d, --dir <path>", stream)} Explicit path to the Neenja documents folder`,
+    `  ${helpOption("-f, --file <path>", stream)} Legacy: explicit path to one documentation file`,
+    `  ${helpOption("--private", stream)} Include private concepts, project plan, and task tree`,
+    `  ${helpOption("--public", stream)} Render only public documentation concepts`,
+    `  ${helpOption("-v, --version", stream)} Show the current package version`,
+    `  ${helpOption("-h, --help", stream)} Show this help`,
+    "",
+    helpSection("Notes", stream),
+    helpBullet(`If no folder is provided, Neenja reads ${accent(`./${defaultDocumentsDirectoryDisplayPath}`, stream)}.`, stream),
+    helpBullet(`Recognized documents are ${accent(defaultDocumentationFilePath, stream)}, ${accent(defaultProjectPlanFilePath, stream)}, and ${accent(defaultTaskTreeFilePath, stream)}.`, stream),
+    helpBullet("Public mode includes only documentation; project plan and task tree are private developer documents.", stream),
+    "",
+    helpSection("Examples", stream),
+    `  ${commandPrefix} serve`,
+    `  ${commandPrefix} serve --public`,
+    `  ${commandPrefix} serve --dir ./some/other/.neenja --port 4010`,
+    `  ${commandPrefix} build`,
+    `  ${commandPrefix} build --private`,
+    `  ${commandPrefix} build-github --domain https://your_name.github.io --page /your_repo/`,
+    `  ${commandPrefix} --version`,
+  ].join("\n")}\n`);
 }
 
 function parseCommandArgs(rawArgs) {
@@ -57,6 +213,7 @@ function parseCommandArgs(rawArgs) {
     file: undefined,
     help: false,
     page: undefined,
+    version: false,
     visibility: undefined,
   };
   const passthroughArgs = [];
@@ -79,6 +236,11 @@ function parseCommandArgs(rawArgs) {
 
     if (arg === "-h" || arg === "--help") {
       options.help = true;
+      continue;
+    }
+
+    if (arg === "-v" || arg === "--version") {
+      options.version = true;
       continue;
     }
 
@@ -311,19 +473,42 @@ async function runAstro(command, astroArgs, env) {
 
 async function handleServe(projectRoot, args) {
   const target = await resolveDocumentsTarget(projectRoot, args.options);
+  const visibility = resolveVisibility(args.options.visibility, "private");
   const env = getSharedAstroEnv(projectRoot, target.documentsDirectoryPath, target.documentationFilePath, {
-    NEENJA_DOCS_VISIBILITY: resolveVisibility(args.options.visibility, "private"),
+    NEENJA_DOCS_VISIBILITY: visibility,
   });
-  return runAstro("dev", args.passthroughArgs, env);
+  logCommandStart("Starting UI 🚀", [
+    { label: "Source", value: getDocumentSourceLabel(projectRoot, target), tone: "accent" },
+    { label: "Mode", value: visibility, tone: "accent" },
+    ...(args.passthroughArgs.length > 0
+      ? [{ label: "Astro args", value: args.passthroughArgs.join(" "), tone: "muted" }]
+      : []),
+  ]);
+
+  const exitCode = await runAstro("dev", args.passthroughArgs, env);
+  logCommandEnd("UI stopped 🛑", exitCode, "UI");
+  return exitCode;
 }
 
 async function handleBuild(projectRoot, args) {
   const target = await resolveDocumentsTarget(projectRoot, args.options);
   const outDir = path.join(projectRoot, ".neenja", "build");
+  const visibility = resolveVisibility(args.options.visibility, "public");
   const env = getSharedAstroEnv(projectRoot, target.documentsDirectoryPath, target.documentationFilePath, {
-    NEENJA_DOCS_VISIBILITY: resolveVisibility(args.options.visibility, "public"),
+    NEENJA_DOCS_VISIBILITY: visibility,
   });
-  return runAstro("build", ["--outDir", outDir, ...args.passthroughArgs], env);
+  logCommandStart("Building static reader", [
+    { label: "Source", value: getDocumentSourceLabel(projectRoot, target), tone: "accent" },
+    { label: "Output", value: displayProjectPath(projectRoot, outDir), tone: "accent" },
+    { label: "Mode", value: visibility, tone: "accent" },
+    ...(args.passthroughArgs.length > 0
+      ? [{ label: "Astro args", value: args.passthroughArgs.join(" "), tone: "muted" }]
+      : []),
+  ]);
+
+  const exitCode = await runAstro("build", ["--outDir", outDir, ...args.passthroughArgs], env);
+  logCommandEnd("Static reader built", exitCode, "Static reader build");
+  return exitCode;
 }
 
 async function handleBuildGithub(projectRoot, args) {
@@ -335,19 +520,38 @@ async function handleBuildGithub(projectRoot, args) {
     throw new Error("Missing required options for build-github: --domain <url> and --page <path>.");
   }
 
+  const visibility = resolveVisibility(args.options.visibility, "public");
   const env = getSharedAstroEnv(projectRoot, target.documentsDirectoryPath, target.documentationFilePath, {
-    NEENJA_DOCS_VISIBILITY: resolveVisibility(args.options.visibility, "public"),
+    NEENJA_DOCS_VISIBILITY: visibility,
     PUBLIC_SITE_URL: domain,
     PUBLIC_BASE_PATH: page,
   });
 
-  return runAstro("build", ["--outDir", outDir, ...args.passthroughArgs], env);
+  logCommandStart("Building GitHub Pages bundle", [
+    { label: "Source", value: getDocumentSourceLabel(projectRoot, target), tone: "accent" },
+    { label: "Output", value: displayProjectPath(projectRoot, outDir), tone: "accent" },
+    { label: "Mode", value: visibility, tone: "accent" },
+    { label: "Domain", value: domain, tone: "accent" },
+    { label: "Page", value: page, tone: "accent" },
+    ...(args.passthroughArgs.length > 0
+      ? [{ label: "Astro args", value: args.passthroughArgs.join(" "), tone: "muted" }]
+      : []),
+  ]);
+
+  const exitCode = await runAstro("build", ["--outDir", outDir, ...args.passthroughArgs], env);
+  logCommandEnd("GitHub Pages bundle built", exitCode, "GitHub Pages build");
+  return exitCode;
 }
 
 async function main() {
   const [, , rawCommand, ...rawArgs] = process.argv;
   const command = rawCommand ?? "help";
   const projectRoot = process.cwd();
+
+  if (command === "-v" || command === "--version" || command === "version") {
+    printVersion();
+    return;
+  }
 
   if (command === "-h" || command === "--help" || command === "help") {
     printHelp();
@@ -358,6 +562,11 @@ async function main() {
 
   if (parsedArgs.options.help) {
     printHelp();
+    return;
+  }
+
+  if (parsedArgs.options.version) {
+    printVersion();
     return;
   }
 
@@ -381,6 +590,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  printError(error);
   process.exitCode = 1;
 });
