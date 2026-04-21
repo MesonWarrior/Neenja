@@ -2,7 +2,7 @@
 title: Neenja Documentation
 project: Neenja
 version: 1
-updated: 2026-04-20
+updated: 2026-04-21
 summary: Neenja keeps AI-friendly project documents current and renders documentation, technical project plans, and task trees as a browsable reader.
 ---
 
@@ -60,6 +60,9 @@ automatically on later tasks so documentation stays current.
   output.
 - Private mode, used by `serve` by default and by `build --private`, includes
   project-plan pages and task-tree pages whenever those files exist.
+- The root route uses documentation only when it has visible concepts. If
+  documentation is empty and a project plan is in the loaded collection, the
+  project plan becomes the default root document.
 - The header navbar switches between recognized document types.
 - Documentation and project-plan pages use a sidebar. Task-tree pages use the
   whole viewport as the graph workspace.
@@ -524,7 +527,9 @@ Fields:
 - visibility: `DocumentationVisibility` - Active documentation visibility mode.
 - documents: `ReaderDocument[]` - Recognized documents in navbar order.
 - documentsBySlug: `Record<string, ReaderDocument>` - Documents keyed by route slug.
-- defaultDocument: `ReaderDocument` - Document rendered at the root route.
+- defaultDocument: `ReaderDocument` - Document rendered at the root route;
+  documentation is preferred only when it has visible concepts, otherwise the
+  project plan is preferred when present.
 
 ## Concept: Parser Pipeline
 ID: parser-pipeline
@@ -597,7 +602,9 @@ Related: parser-pipeline, internal-runtime-functions, documentation-model-types
 - `src/pages/[documentSlug]/[entryId].astro`
 
 ### Routes
-- `/` renders the default document and its first entry.
+- `/` renders the default document and its first entry. Documentation is the
+  default only when it has visible concepts; otherwise an available project
+  plan is used as the root document.
 - `/documentation/` renders the first visible documentation concept.
 - `/documentation/:conceptId/` renders a documentation concept.
 - `/project-plan/` renders the first project plan section.
@@ -646,6 +653,8 @@ Behavior:
 - Reads recognized document files.
 - Parses documentation, project plan, and task tree documents.
 - Builds `documents`, `documentsBySlug`, and `defaultDocument`.
+- Uses the project plan as `defaultDocument` when documentation exists but has
+  no visible concepts.
 
 #### Function: `readDocumentationDocument`
 Kind: function

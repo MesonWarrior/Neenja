@@ -1351,6 +1351,27 @@ async function readRecognizedDocument(file: RecognizedDocumentFile): Promise<Rea
   return parseDocumentationDocument(raw, file.path);
 }
 
+function getDefaultDocument(
+  documentsBySlug: Record<string, ReaderDocument>,
+  documents: ReaderDocument[],
+) {
+  const documentationDocument = documentsBySlug.documentation;
+
+  if (
+    documentationDocument?.kind === "documentation" &&
+    documentationDocument.concepts.length > 0
+  ) {
+    return documentationDocument;
+  }
+
+  return (
+    documentsBySlug["project-plan"] ??
+    documentsBySlug["task-tree"] ??
+    documentationDocument ??
+    documents[0]
+  );
+}
+
 export async function readDocumentationDocumentRaw() {
   const documentationDocumentPath = await resolveDocumentationDocumentPath();
 
@@ -1383,11 +1404,7 @@ export async function readDocumentCollection(): Promise<DocumentCollection> {
   const documentsBySlug = Object.fromEntries(
     documents.map((document) => [document.slug, document]),
   ) as Record<string, ReaderDocument>;
-  const defaultDocument =
-    documentsBySlug.documentation ??
-    documentsBySlug["project-plan"] ??
-    documentsBySlug["task-tree"] ??
-    documents[0];
+  const defaultDocument = getDefaultDocument(documentsBySlug, documents);
 
   return {
     visibility: resolveDocumentationVisibility(),

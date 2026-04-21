@@ -14,7 +14,6 @@ const defaultProjectPlanFilePath = path.join(defaultDocumentsDirectoryPath, "pro
 const defaultTaskTreeFilePath = path.join(defaultDocumentsDirectoryPath, "task-tree.yaml");
 const defaultDocumentsDirectoryDisplayPath = ".neenja";
 const legacyRootDocumentationFilePath = "neenja.knowledge.md";
-const legacyRootDocumentationFileDisplayPath = "./neenja.knowledge.md";
 const requireFromCli = createRequire(import.meta.url);
 const packageMetadata = requireFromCli("../package.json");
 
@@ -23,7 +22,7 @@ const ansiCodes = {
   bold: "\x1b[1m",
   dim: "\x1b[2m",
   gray: "\x1b[90m",
-  orange: "\x1b[38;5;208m",
+  orange: "\x1b[38;5;209m",
 };
 
 const packageLabel = (stream) => `🥷 ${accent("Neenja", stream)} v${packageMetadata.version}`;
