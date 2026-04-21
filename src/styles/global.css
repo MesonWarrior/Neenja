@@ -1166,19 +1166,19 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 
 .task-graph-card.status-done {
-  border-color: rgba(74, 222, 128, 0.82);
+  border-color: rgba(74, 222, 128, 0.4);
 }
 
 .task-graph-card.status-in-progress {
-  border-color: rgba(96, 165, 250, 0.86);
+  border-color: rgba(96, 165, 250, 0.4);
 }
 
 .task-graph-card.status-blocked {
-  border-color: rgba(248, 113, 113, 0.84);
+  border-color: rgba(248, 113, 113, 0.4);
 }
 
 .task-graph-card.status-review {
-  border-color: rgba(250, 204, 21, 0.82);
+  border-color: rgba(250, 204, 21, 0.4);
 }
 
 .task-node-footer {
