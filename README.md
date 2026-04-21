@@ -1,40 +1,31 @@
 # Neenja Docs Tool
 
-Neenja is a tool that allows you to automatically generate project documentation, a project plan, and a task tree using any AI coding agent, with automatic updates whenever changes are made.
+Neenja is a vibecoding framework that creates a set of project documents, allowing you to generate a project plan, automatically maintain documentation, break project development down into tasks, and track task completion.
+
+It provides the agent with instrumentation for understanding the project and tracking the current stage of development in order to achieve a consistent result.
 
 <img src="https://mesonwarrior.github.io/neenja-docs/neenja_image.png" alt="Neenja" style="width: 100%">
 
 ## Example
+
 [Neenja Documentation page](https://mesonwarrior.github.io/neenja-docs/)
 
 <img src="https://mesonwarrior.github.io/neenja-docs/doc_screen.png" alt="Neenja" style="width: 100%">
 
 ## How to use?
+
 1. Run `npx skills add MesonWarrior/Neenja --all`.
-2. Use `/neenja-init` at the beginning of a project when you want an agent
-   to turn your detailed brief into `./.neenja/project-plan.md` and
-   `./.neenja/task-tree.yaml`.
-3. Use `/neenja-bootstrap` once to inspect the repository and create
-   `./.neenja/documentation.md`. You can pass one optional single-line
-   preferences string, and the agent should save it in frontmatter as
-   `preferences:` directly under `summary:`.
-4. Run `npx neenja serve` to open the UI for the `.neenja/` documents folder.
-   By default it shows the full docs set, including internal concepts, and
-   exposes project plan or task tree tabs when those files exist.
-5. Run `npx neenja build` to generate a static reader bundle into
-   `.neenja/build`. By default it builds only public documentation and omits
-   project plan and task tree data.
-
-You can also point the UI and build commands to a custom documents folder:
-
-```bash
-npx neenja serve --dir ./some/other/.neenja
-npx neenja build --dir ./some/other/.neenja
+2. Use the `/neenja-init` skill and describe all information about your project in detail if you are starting a project from scratch.
+- OR:
+Use the `/neenja-bootstrap` skill and describe all information about your project in detail if the project has already been created and is under development.
 ```
+Note: At this stage, you can specify how exactly the agent should maintain each document (documentation.md, project-plan.md, task-tree.md). It will save this in preferences and use it when creating and updating them.
+```
+3. Run `npx neenja serve` to open the UI for reading the documents, and make sure to verify that everything was created correctly. Fix issues at the project plan level so they do not arise during development.
+4. After you have checked everything, you can open a new chat with a clean context and ask the agent to perform specific tasks from the task tree, or to complete a task at its own discretion. Do not ask the agent to perform more than one task at a time if the tasks are substantial enough. Use a chat with a clean context for each new task.
+5. Run `npx neenja build` to build a documentation reader into `.neenja/build`. By default it builds only public documentation and omits project plan and task tree data.
 
-The reader recognizes `documentation.md`, `project-plan.md`, and
-`task-tree.yaml` inside the documents folder. The legacy `--file` flag still
-works for older single-file documentation setups.
+# Privacy
 
 By default, `build` runs in public mode, while `serve` runs in private mode.
 Public mode includes only public concepts from documentation. Private mode also
@@ -46,12 +37,10 @@ npx neenja build --private
 ```
 
 ## GitHub pages build
+
 To build a GitHub Pages-ready bundle into `.neenja/build`, pass the site URL
 and base path as CLI parameters:
 
 ```bash
 npx neenja build-github --domain https://your_name.github.io --page /your_repo/
 ```
-
-## Made with
-Codex + Claude sonnet for UI + My hands
