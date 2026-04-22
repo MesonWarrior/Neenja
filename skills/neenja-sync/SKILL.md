@@ -249,6 +249,7 @@ easier to scan.
 ### project-plan.md rules
 
 - Do not change the project plan unless the user makes some new changes to the project.
+- If a user makes changes, do not miss any detail the user provides. Document everything.
 - Base the plan primarily on the user's brief and details.
 - Prefer concrete fields, file/module references, data-flow notes, and bullet
   lists over broad prose.
@@ -298,6 +299,7 @@ If there is no user preferences regarding task tree, omit the `preferences:` lin
 Write a practical task graph candidate unless the user's brief clearly calls
 for a different decomposition:
 
+- The task tree must have a single root meta-task - creating the entire project. Do not create multiple separate trees. All branches must stem from that one meta-task.
 - Use nested `children:` to express decomposition under a larger task.
 - Use `dependsOn:` to express ordering or blocking relationships between
   tasks, including across different parents.

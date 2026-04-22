@@ -206,7 +206,8 @@ easier to scan.
 
 ### project-plan.md rules
 
-- Base the plan on the existing project data and user's brief and details. 
+- Base the plan on the existing project data and user's brief and details.
+- Do not miss any detail the user provides. Document everything. 
 - Inspect an existing repository, to align with the
   current stack, file layout, and architectural constraints.
 - Prefer concrete fields, file/module references, data-flow notes, and bullet
@@ -268,9 +269,13 @@ for a different decomposition:
   that clearly completes a task.
 - Prefer small, verifiable tasks over vague phases.
 - Include acceptance hints in task `details`.
+
+### task-tree.yaml rules
+
 - Do not be afraid to create deep task trees. Add enough subtasks under other subtasks when they are substantial. The tree does not need to be flat. Each task should be sized ideally so that an agent can complete it in one sitting without filling up the context window.
 - Do not create extra tasks that go beyond what the user has described.
 - The activity of creating or modifying documentation files is NOT a task. Do not create such items in the task tree, only tasks that directly affect the project itself.
+- Create as many tasks as are truly necessary for proper implementation of the described project. Do not underestimate the number of tasks, they should fully cover the implementation.
 
 ## Quality bar
 
