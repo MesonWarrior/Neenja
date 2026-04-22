@@ -323,3 +323,4 @@ for a different decomposition:
 - Do not hesitate to use existing libraries if something can be done more easily and quickly with them.
 - Always clean up unused code. Do not leave behind dead or legacy code for backward compatibility if the project is still in development and has not been released publicly.
 - Do not load documents again if they are already present in your context.
+- If the user has not specified which tasks to perform, do NOT complete the entire project. Your job is to complete one task or a few closely related ones, not to build the whole project in a single pass. This workflow exists specifically to support that approach.
