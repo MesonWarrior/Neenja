@@ -283,7 +283,7 @@ tasks:
     dependsOn:
       - <optional dependency task ID>
     details: |-
-      <optional Markdown task detail, acceptance notes, or implementation hints>
+      <Markdown task detail, acceptance notes, or implementation hints>
     children:
       - id: <stable-machine-id>
         title: <Human Subtask Title>
@@ -302,8 +302,10 @@ for a different decomposition:
 - Use `dependsOn:` to express ordering or blocking relationships between
   tasks, including across different parents.
 - Prefer small, verifiable tasks over vague phases.
-- Include acceptance hints in task `details` when they materially help
-  implementation.
+- Include acceptance hints in task `details`.
+- Do not be afraid to create deep task trees. Add enough subtasks under other subtasks when they are substantial. The tree does not need to be flat. Each task should be sized ideally so that an agent can complete it in one sitting without filling up the context window.
+- Do not create extra tasks that go beyond what the user has described.
+- The activity of creating or modifying documentation files is NOT a task. Do not create such items in the task tree, only tasks that directly affect the project itself.
 
 ## If the documentation files do not exist yet
 
