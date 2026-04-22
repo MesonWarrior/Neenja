@@ -21,8 +21,9 @@
     "agent",
     "cli",
     "documentation",
-    "knowledge-base",
-    "neenja"
+    "neenja",
+    "framework",
+    "tracking"
   ],
   "homepage": "https://github.com/MesonWarrior/Neenja#readme",
   "bugs": {
