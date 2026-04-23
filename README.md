@@ -25,7 +25,7 @@ It provides the agent with instrumentation for understanding the project and tra
 
 ### Setup
 
-1. Run `npx skills add MesonWarrior/Neenja --all`.
+1. Run `npx skills add MesonWarrior/Neenja --all -g`.
 2. Write a comprehensive description of your project in free form, covering everything from architecture to design and the technology stack, with attention to even the smallest details that matter to you.
 3. Use the `/neenja-init` skill and insert the description you wrote in the previous step if you are starting a project from scratch.
 - OR:

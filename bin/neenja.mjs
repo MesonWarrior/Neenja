@@ -411,7 +411,7 @@ async function resolveDocumentsTarget(projectRoot, options) {
       ]),
       ...(!options.dir ? [`- ${legacyPath}`] : []),
       "",
-      "Run \"npx skills add MesonWarrior/Neenja --all\" and then use \"/neenja-bootstrap\" to generate \".neenja/documentation.md\",",
+      "Run \"npx skills add MesonWarrior/Neenja --all -g\" and then use \"/neenja-bootstrap\" to generate \".neenja/documentation.md\",",
       "or provide a custom folder with \"-d\" or \"--dir\".",
     ].join("\n"),
   );

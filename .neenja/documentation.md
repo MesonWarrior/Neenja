@@ -38,7 +38,7 @@ The document type is determined by filename. Unknown files in the folder are
 ignored by the reader.
 
 ### Typical usage
-1. Run `npx skills add MesonWarrior/Neenja --all`.
+1. Run `npx skills add MesonWarrior/Neenja --all -g`.
 2. Use `/neenja-init` at the start of a project when the user gives the
    brief and wants a technical plan plus task tree candidate for review.
 3. Use `/neenja-bootstrap` once so an agent can generate
@@ -226,7 +226,7 @@ Related: platform-overview, documentation-file-format, internal-runtime-function
 Install the Neenja skills with:
 
 ```bash
-npx skills add MesonWarrior/Neenja --all
+npx skills add MesonWarrior/Neenja --all -g
 ```
 
 ### `neenja-init`
